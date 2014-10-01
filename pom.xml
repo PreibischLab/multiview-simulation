@@ -5,7 +5,13 @@
   <version>0.0.1-SNAPSHOT</version>
   <name>multiview-simulation</name>
   <description>code for simulating a multi-view acquisition including attenuation, convolution, reduced sampling and poission noise</description>
-  
+
+  <parent>
+  	<groupId>net.imglib2</groupId>
+  	<artifactId>pom-imglib2</artifactId>
+  	<version>2.0.0-beta-26</version>
+  </parent>
+
 	<licenses>
 		<license>
 			<name>GNU Public License v2</name>
@@ -17,17 +23,14 @@
   	<dependency>
   		<groupId>net.imglib2</groupId>
   		<artifactId>imglib2-ij</artifactId>
-  		<version>2.0.0-SNAPSHOT</version>
   	</dependency>
   	<dependency>
   		<groupId>net.imglib2</groupId>
   		<artifactId>imglib2-algorithms</artifactId>
-  		<version>2.0.0-SNAPSHOT</version>
   	</dependency>
   	<dependency>
   		<groupId>net.imglib2</groupId>
   		<artifactId>imglib2-realtransform</artifactId>
-  		<version>2.0.0-SNAPSHOT</version>
   	</dependency>
   	<dependency>
   		<groupId>mpicbg</groupId>
@@ -42,12 +45,15 @@
   	<dependency>
   		<groupId>net.imglib2</groupId>
   		<artifactId>imglib2-algorithms-gpl</artifactId>
-  		<version>2.0.0-SNAPSHOT</version>
   	</dependency>
   </dependencies>
-  <parent>
-  	<groupId>net.imglib2</groupId>
-  	<artifactId>pom-imglib2</artifactId>
-  	<version>2.0.0-SNAPSHOT</version>
-  </parent>
+
+	<repositories>
+		<!-- NB: for project parent -->
+		<repository>
+			<id>imagej.public</id>
+			<url>http://maven.imagej.net/content/groups/public</url>
+		</repository>
+	</repositories>
+
 </project>
