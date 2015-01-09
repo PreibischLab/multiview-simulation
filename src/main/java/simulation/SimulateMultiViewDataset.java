@@ -193,7 +193,7 @@ public class SimulateMultiViewDataset
 		Tools.normImage( psf );
 		final Img< FloatType > result = img.factory().create( img, img.firstElement() );
 		final FFTConvolution< FloatType > conv = new FFTConvolution<FloatType>( img, psf, result );
-		conv.run();
+		conv.convolve();
 		
 		return result;
 	}
