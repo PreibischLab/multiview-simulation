@@ -86,7 +86,7 @@ public class SimulateMultiViewDataset
 
 		final Cursor< FloatType > c = out.localizingCursor();
 		final int[] l = new int[ out.numDimensions() ];
-		final float[] lf = new float[ out.numDimensions() ];
+		final double[] lf = new double[ out.numDimensions() ];
 		
 		while ( c.hasNext() )
 		{

@@ -2,7 +2,7 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>net.imglib2.simulation</groupId>
   <artifactId>multiview-simulation</artifactId>
-  <version>0.0.3-SNAPSHOT</version>
+  <version>0.0.3</version>
   <name>multiview-simulation</name>
   <description>code for simulating a multi-view acquisition including attenuation, convolution, reduced sampling and poission noise</description>
 
@@ -35,6 +35,7 @@
   	<dependency>
   		<groupId>mpicbg</groupId>
   		<artifactId>mpicbg</artifactId>
+  		<version>1.0.1</version>
   	</dependency>
   	<dependency>
   		<groupId>org.uncommons.maths</groupId>
@@ -44,6 +45,11 @@
   	<dependency>
   		<groupId>net.imglib2</groupId>
   		<artifactId>imglib2-algorithm-gpl</artifactId>
+  	</dependency>
+  	<dependency>
+  		<groupId>sc.fiji</groupId>
+  		<artifactId>spim_data</artifactId>
+  		<version>1.0.0-beta-7</version>
   	</dependency>
   </dependencies>
 

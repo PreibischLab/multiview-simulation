@@ -62,9 +62,9 @@ public class SimulateBeads
 	{
 		if ( imgs == null )
 		{
-			final ArrayList< float[] > points = randomPoints( numPoints, rangeSimulation, rnd );
+			final ArrayList< double[] > points = randomPoints( numPoints, rangeSimulation, rnd );
 	
-			final ArrayList< ArrayList< float[] > > lists = transformPoints( points, angles, axis, rangeSimulation );
+			final ArrayList< ArrayList< double[] > > lists = transformPoints( points, angles, axis, rangeSimulation );
 	
 			imgs = renderPoints( lists, intervalRender, sigma );
 		}
@@ -72,11 +72,11 @@ public class SimulateBeads
 		return imgs;
 	}
 
-	public static ArrayList< Img< FloatType > > renderPoints( final ArrayList< ArrayList< float[] > > lists, final Interval interval, final double[] sigma )
+	public static ArrayList< Img< FloatType > > renderPoints( final ArrayList< ArrayList< double[] > > lists, final Interval interval, final double[] sigma )
 	{
 		final ArrayList< Img< FloatType > > images = new ArrayList< Img< FloatType > >();
 
-		for ( final ArrayList< float[] > list : lists )
+		for ( final ArrayList< double[] > list : lists )
 		{
 			final long[] dim = new long[ interval.numDimensions() ];
 
@@ -85,7 +85,7 @@ public class SimulateBeads
 
 			final Img< FloatType > img = ArrayImgs.floats( dim );
 
-			for ( final float[] p : list )
+			for ( final double[] p : list )
 				if ( isInsideAdjust( p, interval ) )
 					addGaussian( img, p, sigma );
 
@@ -95,7 +95,7 @@ public class SimulateBeads
 		return images;
 	}
 
-	protected static boolean isInsideAdjust( final float[] p, final Interval interval )
+	protected static boolean isInsideAdjust( final double[] p, final Interval interval )
 	{
 		for ( int d = 0; d < interval.numDimensions(); ++d )
 		{
@@ -107,17 +107,17 @@ public class SimulateBeads
 
 		return true;
 	}
-	public static ArrayList< ArrayList< float[] > > transformPoints( final ArrayList< float[] > points, final int[] angles, final int axis, final Interval range )
+	public static ArrayList< ArrayList< double[] > > transformPoints( final ArrayList< double[] > points, final int[] angles, final int axis, final Interval range )
 	{
-		final ArrayList< ArrayList< float[] > > transformedPoints = new ArrayList< ArrayList< float[] > >();
+		final ArrayList< ArrayList< double[] > > transformedPoints = new ArrayList< ArrayList< double[] > >();
 
 		for ( final int angle : angles )
 		{
 			final AffineModel3D t = SimulateMultiViewDataset.axisRotation( range, axis, angle );
 
-			final ArrayList< float[] > transformed = new ArrayList< float[] >();
+			final ArrayList< double[] > transformed = new ArrayList< double[] >();
 
-			for ( final float[] p : points )
+			for ( final double[] p : points )
 				transformed.add( t.apply( p ) );
 
 			transformedPoints.add( transformed );
@@ -126,16 +126,16 @@ public class SimulateBeads
 		return transformedPoints;
 	}
 
-	public static ArrayList< float[] > randomPoints( final int numPoints, final Interval range, final Random rnd )
+	public static ArrayList< double[] > randomPoints( final int numPoints, final Interval range, final Random rnd )
 	{
-		final ArrayList< float[] > points = new ArrayList< float[] >();
+		final ArrayList< double[] > points = new ArrayList< double[] >();
 
 		for ( int i = 0; i < numPoints; ++i )
 		{
-			final float[] p = new float[ range.numDimensions() ];
+			final double[] p = new double[ range.numDimensions() ];
 
 			for ( int d = 0; d < range.numDimensions(); ++d )
-				p[ d ] = rnd.nextFloat() * ( range.max( d ) - range.min( d ) ) + range.min( d );
+				p[ d ] = rnd.nextDouble() * ( range.max( d ) - range.min( d ) ) + range.min( d );
 
 			points.add( p );
 		}
@@ -143,7 +143,7 @@ public class SimulateBeads
 		return points;
 	}
 
-	final public static void addGaussian( final Img< FloatType > image, final float[] location, final double[] sigma )
+	final public static void addGaussian( final Img< FloatType > image, final double[] location, final double[] sigma )
 	{
 		final int numDimensions = image.numDimensions();
 		final int[] size = new int[ numDimensions ];
