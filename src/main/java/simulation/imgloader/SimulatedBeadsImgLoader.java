@@ -155,7 +155,7 @@ public class SimulatedBeadsImgLoader implements ImgLoader< UnsignedShortType >
 		final ViewRegistrations viewRegistrations = createViewRegistrations( sequenceDescription.getViewDescriptions(), minResolution );
 
 		// finally create the SpimData itself based on the sequence description and the view registration
-		final SpimData spimData = new SpimData( new File( "" ), sequenceDescription, viewRegistrations );
+		final SpimData spimData = new SpimData( new File( "." ), sequenceDescription, viewRegistrations );
 
 		return spimData;
 	}
