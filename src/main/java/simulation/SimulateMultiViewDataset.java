@@ -8,6 +8,7 @@ import java.util.Random;
 
 import mpicbg.models.AffineModel3D;
 import net.imglib2.Cursor;
+import net.imglib2.Interval;
 import net.imglib2.Point;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
@@ -27,6 +28,19 @@ import net.imglib2.view.Views;
 /**
  * Code for simulating a multi-view acquisition including attenuation, convolution, reduced sampling and poisson noise
  * 
+ * This software is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation, either version 2 of the License, or
+ * (at your option) any later version.
+
+ * This software is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+
+ * You should have received a copy of the GNU General Public License
+ * along with this software.  If not, see <http://www.gnu.org/licenses/>.
+ * 
  * @author Stephan Preibisch (stephan.preibisch@gmx.de)
  */
 public class SimulateMultiViewDataset
@@ -34,14 +48,14 @@ public class SimulateMultiViewDataset
 	final static Random rnd = new Random( 464232194 );
 	final public static float minValue = 0.0001f;
 	public final static float avgIntensity = 1;
- 
-	public static Img< FloatType > rotateAroundAxis( final RandomAccessibleInterval< FloatType > in, final int axis, final int degrees )
+
+	public static AffineModel3D axisRotation( final Interval in, final int axis, final int degrees )
 	{
 		// translate so that the center of the image is 0,0,0
 		final AffineModel3D translate1 = new AffineModel3D();
-		translate1.set( 1, 0, 0, -in.dimension( 0 )/2, 
-					    0, 1, 0, -in.dimension( 1 )/2,
-					    0, 0, 1, -in.dimension( 2 )/2 );
+		translate1.set( 1, 0, 0, -( in.max( 0 ) - in.min( 0 ) )/2,
+					    0, 1, 0, -( in.max( 1 ) - in.min( 1 ) )/2,
+					    0, 0, 1, -( in.max( 2 ) - in.min( 2 ) )/2 );
 		
 		// rotate around an axis
 		final AffineModel3D rot = new AffineModel3D();
@@ -49,15 +63,20 @@ public class SimulateMultiViewDataset
 
 		// translate back to the center
 		final AffineModel3D translate2 = new AffineModel3D();
-		translate2.set( 1, 0, 0, in.dimension( 0 )/2, 
-					    0, 1, 0, in.dimension( 1 )/2,
-					    0, 0, 1, in.dimension( 2 )/2 );
+		translate2.set( 1, 0, 0, ( in.max( 0 ) - in.min( 0 ) )/2,
+					    0, 1, 0, ( in.max( 1 ) - in.min( 1 ) )/2,
+					    0, 0, 1, ( in.max( 2 ) - in.min( 2 ) )/2 );
 
 		translate1.preConcatenate( rot );
 		translate1.preConcatenate( translate2 );
 
+		return translate1;
+	}
+
+	public static Img< FloatType > rotateAroundAxis( final RandomAccessibleInterval< FloatType > in, final int axis, final int degrees )
+	{
 		// final model
-		final AffineModel3D affine = translate1.createInverse();
+		final AffineModel3D affine = axisRotation( in, axis, degrees ).createInverse();
 
 		final Img< FloatType > out = new ArrayImgFactory< FloatType >().create( in, new FloatType() );
 

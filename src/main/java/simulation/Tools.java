@@ -47,13 +47,19 @@ public class Tools
     public static void save( final Img< FloatType > img, final String file )
     {
     	final ImagePlus imp = ImageJFunctions.wrap( img, "" ).duplicate();
+
     	final FileSaver s = new FileSaver( imp );
     	
     	if ( img.numDimensions() == 3 )
+    	{
+    		imp.setDimensions( 1, (int)img.dimension( 2 ), 1 );
     		s.saveAsTiffStack( file );
+    	}
     	else
+    	{
     		s.saveAsTiff( file );
-    	
+    	}
+
     	imp.close();
     }
 	
