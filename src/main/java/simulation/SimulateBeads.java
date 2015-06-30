@@ -36,20 +36,41 @@ import net.imglib2.view.Views;
  */
 public class SimulateBeads
 {
-	final ArrayList< Img< FloatType > > imgs;
+	ArrayList< Img< FloatType > > imgs;
+	public final int[] angles;
+	public final int axis;
+	public final int numPoints;
+	public final Interval rangeSimulation;
+	public final Interval intervalRender;
+	public final double[] sigma;
+
+	final Random rnd = new Random( 535 );
 
 	public SimulateBeads( final int[] angles, final int axis, final int numPoints, final Interval rangeSimulation, final Interval intervalRender, final double[] sigma )
 	{
-		final Random rnd = new Random( 535 );
+		this.angles = angles;
+		this.axis = axis;
+		this.numPoints = numPoints;
+		this.rangeSimulation = rangeSimulation;
+		this.intervalRender = intervalRender;
+		this.sigma = sigma;
 
-		final ArrayList< float[] > points = randomPoints( numPoints, rangeSimulation, rnd );
-
-		final ArrayList< ArrayList< float[] > > lists = transformPoints( points, angles, axis, rangeSimulation );
-
-		imgs = renderPoints( lists, intervalRender, sigma );
+		this.imgs = null;
 	}
 
-	public ArrayList< Img< FloatType > > getImgs() { return imgs; }
+	public ArrayList< Img< FloatType > > getImgs()
+	{
+		if ( imgs == null )
+		{
+			final ArrayList< float[] > points = randomPoints( numPoints, rangeSimulation, rnd );
+	
+			final ArrayList< ArrayList< float[] > > lists = transformPoints( points, angles, axis, rangeSimulation );
+	
+			imgs = renderPoints( lists, intervalRender, sigma );
+		}
+
+		return imgs;
+	}
 
 	public static ArrayList< Img< FloatType > > renderPoints( final ArrayList< ArrayList< float[] > > lists, final Interval interval, final double[] sigma )
 	{
@@ -157,7 +178,7 @@ public class SimulateBeads
 				value *= Math.exp( -(x * x) / two_sq_sigma[ d ] );
 			}
 			
-			cursor.get().set( cursor.get().get() + (float)value );
+			cursor.get().set( cursor.get().get() + ( (float)value * 1000.0f ) );
 		}
 	}
 
