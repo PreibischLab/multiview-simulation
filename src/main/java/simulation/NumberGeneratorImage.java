@@ -1,11 +1,12 @@
 package simulation;
 
+import simulation.uncommons.NumberGenerator;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
 
-import org.uncommons.maths.number.NumberGenerator;
+//import org.uncommons.maths.number.NumberGenerator;
 
 /**
  * Helper class for the poisson process

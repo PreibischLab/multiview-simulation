@@ -8,8 +8,7 @@ import ij.process.ImageProcessor;
 import java.awt.Image;
 import java.util.Random;
 
-import org.uncommons.maths.random.PoissonGenerator;
-
+import simulation.uncommons.PoissonGenerator;
 import mpicbg.util.RealSum;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
