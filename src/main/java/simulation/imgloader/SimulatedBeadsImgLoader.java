@@ -126,15 +126,21 @@ public class SimulatedBeadsImgLoader implements ImgLoader< UnsignedShortType >
 		xml.save( spimData, xmlFilename );
 	}
 
-	public static SpimData spimdataExample()
+	public static SpimData spimdataExample( final int[] angles )
 	{
-		final int[] angles = new int[]{ 0, 45, 90, 135 };
 		final int axis = 0;
 		final int numPoints = 1000;
 		final double[] sigma = new double[]{ 1, 1, 3 };
 		final FinalInterval range = new FinalInterval( 512, 512, 200 );
 
 		return spimdataExample( angles, axis, numPoints, sigma, range );
+	}
+
+	public static SpimData spimdataExample()
+	{
+		final int[] angles = new int[]{ 0, 45, 90, 135 };
+
+		return spimdataExample( angles );
 	}
 
 	public static SpimData spimdataExample( final int[] angles, final int axis, final int numPoints, final double[] sigma, final Interval range )
