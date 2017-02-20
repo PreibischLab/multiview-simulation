@@ -7,12 +7,16 @@ import java.util.List;
 import java.util.Map;
 import java.util.Random;
 
+import net.imglib2.Dimensions;
+import net.imglib2.FinalRealInterval;
 import net.imglib2.Interval;
+import net.imglib2.RealInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Intervals;
+import net.imglib2.util.Util;
 
 public class SimulateBeads2
 {
@@ -48,6 +52,26 @@ public class SimulateBeads2
 		tileTransforms = new HashMap<>();
 		
 		points = SimulateBeads.randomPoints( numPoints, rangeSimulation, rnd );
+	}
+	
+	// get min/max of all tiles
+	public RealInterval getTilesExtent()
+	{
+		final Dimensions dims = intervalRender;
+		double[] mins = Util.getArrayFromValue( Double.MAX_VALUE, dims.numDimensions() );
+		double[] maxs = Util.getArrayFromValue( -Double.MAX_VALUE, dims.numDimensions() );
+		
+		for (AffineTransform3D tt : tileTransforms.values())
+		{
+			for (int d = 0; d < dims.numDimensions(); d++)
+			{
+				mins[d] = Math.min( mins[d], -tt.getTranslation()[d] );
+				maxs[d] = Math.max( maxs[d], -tt.getTranslation()[d] + dims.dimension( d ) );
+			}
+		}
+		
+		return new FinalRealInterval( mins, maxs );
+		
 	}
 	
 	public Img< FloatType >  getImg(int tp, int angle, int channel, int tile, int illumination)

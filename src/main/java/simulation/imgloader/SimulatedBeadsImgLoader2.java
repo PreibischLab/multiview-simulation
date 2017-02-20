@@ -31,6 +31,7 @@ import net.imglib2.Dimensions;
 import net.imglib2.FinalDimensions;
 import net.imglib2.Interval;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.RealInterval;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.realtransform.AffineTransform3D;
 import net.imglib2.realtransform.Translation;
@@ -117,10 +118,16 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 			
 	}
 	
-	public static ViewRegistrations createViewRegistrationsFromImgLoader(SimulatedBeadsImgLoader2 imgLoader, double relativeTileError)
+	public static ViewRegistrations createViewRegistrationsFromImgLoader(SimulatedBeadsImgLoader2 imgLoader, double relativeTileError, boolean centerAngles)
 	{
 		SimulateBeads2 sb = imgLoader.getSimulateBeads();
 		final HashMap< ViewId, ViewRegistration > viewRegistrationList = new HashMap< ViewId, ViewRegistration >();
+		final RealInterval tilesExtent = sb.getTilesExtent();
+		double[] center = new double[tilesExtent.numDimensions()];
+		tilesExtent.realMax( center );
+		
+		for (int d = 0; d < center.length; d++)
+			center[d] /= -2.0;
 		
 		for (int tp : new ArrayList<>(sb.tpTransforms.keySet()).stream().sorted().collect( Collectors.toList() ))
 		{
@@ -159,6 +166,14 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 						final ViewTransform vtT = new ViewTransformAffine("translation" , atr.copy() );
 						viewRegistration.preconcatenateTransform( vtT );
 						
+						if (centerAngles)
+						{
+							AffineTransform3D centerTr = new AffineTransform3D();
+							centerTr.translate( center );
+							final ViewTransform centerVt = new ViewTransformAffine("center angle" , centerTr.copy() );
+							viewRegistration.preconcatenateTransform( centerVt );
+						}
+						
 						final ViewTransform vtA = new ViewTransformAffine("rotation" , sb.angleTransforms.get( a ));
 						viewRegistration.preconcatenateTransform( vtA );
 						
@@ -185,7 +200,8 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 			List<double[]> illumShifts,
 			List<double[]> timeShifts,
 			List<double[]> tileShifts,
-			double relativeTileError
+			double relativeTileError,
+			boolean centerAngles
 	)
 	{
 		SimulateBeads2 sb = new SimulateBeads2( numPoints, sigma, rangeSimulation, intervalRender );
@@ -195,7 +211,7 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 		SequenceDescription sd = new SequenceDescription( createTimePointsFromImgLoader( loader ), createViewSetupsFromImgLoader( loader ) );
 		
 		sd.setImgLoader( loader );
-		SpimData res = new SpimData( new File(""), sd, createViewRegistrationsFromImgLoader( loader, relativeTileError ) );
+		SpimData res = new SpimData( new File(""), sd, createViewRegistrationsFromImgLoader( loader, relativeTileError, centerAngles ) );
 		
 		return res;
 		
@@ -226,6 +242,8 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 		
 		gd.addStringField( "Angles", "0,90" );
 		gd.addNumericField( "Angle Axis of Rotation", 1, 0 );
+		
+		gd.addCheckbox( "center angles before rotation", true );
 		
 		
 		gd.showDialog();
@@ -270,6 +288,8 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 		}
 		
 		int rotAxis = (int) gd.getNextNumber();
+		
+		boolean center = gd.getNextBoolean();
 		
 		
 		
@@ -338,7 +358,7 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 		generateRegularGrid.forEach( ( t ) -> tileShifts.add( t.getTranslation() ));
 	
 		
-		return createSpimData( numPoints, sigmas, Intervals.createMinMax( simMinMax ), Intervals.createMinMax( vpMinMax ), rotAxis, angles, channelShifts, illumShifts, timeShifts, tileShifts, relError );
+		return createSpimData( numPoints, sigmas, Intervals.createMinMax( simMinMax ), Intervals.createMinMax( vpMinMax ), rotAxis, angles, channelShifts, illumShifts, timeShifts, tileShifts, relError, center );
 	}
 	
 	public static void main(String[] args)
@@ -360,7 +380,7 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 		tileShifts.add( new double[3] );
 		
 		SpimData sd = createSpimData( 1000, new double[] {1, 1, 3 }, Intervals.createMinMax( 0,0,0,256,256,100 ),
-				Intervals.createMinMax( 0,0,0,256,256,100 ), 1, new double[] {0, 90}, channelShifts, illumShifts, timeShifts, tileShifts , 0.9);
+				Intervals.createMinMax( 0,0,0,256,256,100 ), 1, new double[] {0, 90}, channelShifts, illumShifts, timeShifts, tileShifts , 0.9, true);
 		
 		RandomAccessibleInterval< UnsignedShortType > img = (RandomAccessibleInterval< UnsignedShortType >) sd.getSequenceDescription().getImgLoader().getSetupImgLoader( 0 ).getImage( 1, null );
 		ImageJFunctions.show( img );
