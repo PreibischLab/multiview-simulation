@@ -1,11 +1,10 @@
 package simulation;
 
-import ij.ImageJ;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
+import ij.ImageJ;
 import mpicbg.models.AffineModel3D;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
@@ -212,6 +211,8 @@ public class SimulateMultiViewDataset
 		Tools.normImage( psf );
 		final Img< FloatType > result = img.factory().create( img, img.firstElement() );
 		final FFTConvolution< FloatType > conv = new FFTConvolution<FloatType>( img, psf, result );
+		// this fixes the wrong default kernel flipping in older versions of FFTConvolution 
+		conv.setComputeComplexConjugate(false);
 		conv.convolve();
 		
 		return result;
