@@ -19,6 +19,7 @@ import mpicbg.spim.data.sequence.Angle;
 import mpicbg.spim.data.sequence.Channel;
 import mpicbg.spim.data.sequence.FinalVoxelDimensions;
 import mpicbg.spim.data.sequence.Illumination;
+import mpicbg.spim.data.sequence.MissingViews;
 import mpicbg.spim.data.sequence.SequenceDescription;
 import mpicbg.spim.data.sequence.Tile;
 import mpicbg.spim.data.sequence.TimePoint;
@@ -208,7 +209,8 @@ public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedSh
 		SimulatedBeadsImgLoader2 loader = new SimulatedBeadsImgLoader2( sb, rotAxis, ratations, channelShifts, illumShifts, timeShifts, tileShifts );
 		
 		
-		SequenceDescription sd = new SequenceDescription( createTimePointsFromImgLoader( loader ), createViewSetupsFromImgLoader( loader ) );
+		SequenceDescription sd = new SequenceDescription( createTimePointsFromImgLoader( loader ), createViewSetupsFromImgLoader( loader ),
+															null, new MissingViews( new ArrayList<>() ) );
 		
 		sd.setImgLoader( loader );
 		SpimData res = new SpimData( new File(""), sd, createViewRegistrationsFromImgLoader( loader, relativeTileError, centerAngles ) );
