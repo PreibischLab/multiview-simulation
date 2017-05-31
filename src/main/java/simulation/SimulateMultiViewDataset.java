@@ -1,11 +1,10 @@
 package simulation;
 
-import ij.ImageJ;
-
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
+import ij.ImageJ;
 import mpicbg.models.AffineModel3D;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
@@ -39,7 +38,7 @@ import net.imglib2.view.Views;
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this software.  If not, see http://www.gnu.org/licenses/.
  * 
  * @author Stephan Preibisch (stephan.preibisch@gmx.de)
  */
@@ -109,9 +108,9 @@ public class SimulateMultiViewDataset
 	/**
 	 * Scales the reduced lightsheet acquisition back to isotropic size
 	 * 
-	 * @param randomAccessible
+	 * @param randomAccessible - the input
 	 * @param inc - every n'th 
-	 * @return
+	 * @return - the isotropic image
 	 */
 	public static Img< FloatType > makeIsotropic( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc )
 	{
@@ -145,10 +144,10 @@ public class SimulateMultiViewDataset
 	/**
 	 * Scans the sample with a simulated lightsheet ... the width of the lightsheet is implicitly defined by the effective PSF
 	 * 
-	 * @param randomAccessible
+	 * @param randomAccessible - input
 	 * @param inc - every n'th 
 	 * @param poissonSNR - which poisson SNR is desired?
-	 * @return
+	 * @return every n'th slice
 	 */
 	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR  )
 	{
@@ -212,6 +211,8 @@ public class SimulateMultiViewDataset
 		Tools.normImage( psf );
 		final Img< FloatType > result = img.factory().create( img, img.firstElement() );
 		final FFTConvolution< FloatType > conv = new FFTConvolution<FloatType>( img, psf, result );
+		// this fixes the wrong default kernel flipping in older versions of FFTConvolution 
+		conv.setComputeComplexConjugate(false);
 		conv.convolve();
 		
 		return result;
@@ -364,6 +365,8 @@ public class SimulateMultiViewDataset
      * @param randomAccessible - the image data to write to
      * @param minValue - the minimal intensity of one of the small spheres
      * @param maxValue - the maximal intensity of one of the small spheres
+     * @param scale - the scale
+     * @param <T> - the type
      */
     public static < T extends RealType< T > > void drawSpheres(
             final RandomAccessibleInterval< T > randomAccessible,

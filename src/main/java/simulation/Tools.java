@@ -35,7 +35,7 @@ import net.imglib2.view.Views;
  * GNU General Public License for more details.
 
  * You should have received a copy of the GNU General Public License
- * along with this software.  If not, see <http://www.gnu.org/licenses/>.
+ * along with this software.  If not, see http://www.gnu.org/licenses/.
  * 
  * @author Stephan Preibisch (stephan.preibisch@gmx.de)
  *
@@ -198,8 +198,8 @@ public class Tools
 	/**
 	 * Make quadratic image, pad with minimal intensity
 	 * 
-	 * @param img
-	 * @return
+	 * @param img - the input
+	 * @return - the squared image
 	 */
 	public static Img< FloatType > makeSquare( final Img< FloatType > img )
 	{

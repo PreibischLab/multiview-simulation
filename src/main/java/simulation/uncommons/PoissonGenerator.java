@@ -31,7 +31,7 @@ private final NumberGenerator<Double> mean;
 
 /**
 * <p>Creates a generator of Poisson-distributed values.  The mean is
-* determined by the provided {@link org.uncommons.maths.number.NumberGenerator}.  This means that
+* determined by the provided {org.uncommons.maths.number.NumberGenerator}.  This means that
 * the statistical parameters of this generator may change over time.
 * One example of where this is useful is if the mean generator is attached
 * to a GUI control that allows a user to tweak the parameters while a
