@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
+import ij.IJ;
 import ij.ImageJ;
 import mpicbg.models.AffineModel3D;
 import net.imglib2.Cursor;
@@ -159,7 +160,9 @@ public class SimulateMultiViewDataset
 
 		final RandomAccess< FloatType > r = img.randomAccess();
 		final int[] tmp = new int[ 3 ];
-		
+
+		IJ.showProgress( 0 );
+
 		int countZ = 0;
 		for ( int z = 0; z < randomAccessible.dimension( 2 ); z += inc )
 		{
@@ -181,6 +184,8 @@ public class SimulateMultiViewDataset
 				r.setPosition( tmp );
 				r.get().set( c.get() );
 			}
+
+			IJ.showProgress( z, (int)randomAccessible.dimension( 2 ) );
 		}
 		
 		return img;
@@ -403,7 +408,13 @@ public class SimulateMultiViewDataset
 
             // create a cursor on the hypersphere
             HyperSphereCursor< T > cursor = hyperSphere.cursor();
-            
+
+            int size = (int)hyperSphere.size();
+
+            IJ.showProgress( 0.0 );
+
+            int i = 0;
+
             while ( cursor.hasNext() )
             {
                     cursor.fwd();
@@ -430,6 +441,8 @@ public class SimulateMultiViewDataset
                             for ( final T value : smallSphere )
                                     value.setReal( Math.max( randomValue, value.getRealDouble() ) );
                     }
+
+                    IJ.showProgress( ++i, size );
             }
     }
 
