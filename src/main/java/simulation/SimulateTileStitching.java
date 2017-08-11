@@ -119,8 +119,11 @@ public class SimulateTileStitching
 
 		if ( halfPixelOffset )
 		{
-			translation[ 0 ] += 0.5;
-			translation[ 1 ] += 0.5;
+			// unintutive, but true. If the content of the right image is shifted
+			// more to the right (by 0.5 pixels), means that in order to match it
+			// has to be shifted less to the left (take to sheets of paper to understand :)
+			translation[ 0 ] -= 0.5;
+			translation[ 1 ] -= 0.5;
 		}
 
 		return translation;
