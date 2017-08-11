@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
 
+import ij.IJ;
 import ij.ImageJ;
 import mpicbg.models.AffineModel3D;
 import net.imglib2.Cursor;
@@ -151,6 +152,20 @@ public class SimulateMultiViewDataset
 	 */
 	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR  )
 	{
+		return extractSlices( randomAccessible, inc, poissonSNR, rnd );
+	}
+
+	/**
+	 * Scans the sample with a simulated lightsheet ... the width of the lightsheet is implicitly defined by the effective PSF
+	 * 
+	 * @param randomAccessible - input
+	 * @param inc - every n'th 
+	 * @param poissonSNR - which poisson SNR is desired?
+	 * @param rnd - a random number generator
+	 * @return every n'th slice
+	 */
+	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR, final Random rnd  )
+	{
 		if ( ( randomAccessible.dimension( 2 ) - 1 ) % inc != 0 )
 			throw new RuntimeException( "Index of last z slice needs to be divisable by " + inc);
 		
@@ -159,7 +174,9 @@ public class SimulateMultiViewDataset
 
 		final RandomAccess< FloatType > r = img.randomAccess();
 		final int[] tmp = new int[ 3 ];
-		
+
+		IJ.showProgress( 0 );
+
 		int countZ = 0;
 		for ( int z = 0; z < randomAccessible.dimension( 2 ); z += inc )
 		{
@@ -167,7 +184,7 @@ public class SimulateMultiViewDataset
 			final Cursor< FloatType > c;
 			
 			if ( poissonSNR >= 0.0 )
-				c = poissonProcess( slice, poissonSNR ).localizingCursor();
+				c = poissonProcess( slice, poissonSNR, rnd ).localizingCursor();
 			else
 				c = Views.iterable( slice ).localizingCursor();
 			
@@ -181,12 +198,14 @@ public class SimulateMultiViewDataset
 				r.setPosition( tmp );
 				r.get().set( c.get() );
 			}
+
+			IJ.showProgress( z, (int)randomAccessible.dimension( 2 ) );
 		}
 		
 		return img;
 	}
 	
-	public static Img< FloatType > poissonProcess( final RandomAccessibleInterval< FloatType > in, final float poissonSNR )
+	public static Img< FloatType > poissonProcess( final RandomAccessibleInterval< FloatType > in, final float poissonSNR, final Random rnd )
 	{
 		final Img< FloatType > out = new ArrayImgFactory< FloatType >().create( in, new FloatType() );
 
@@ -303,8 +322,13 @@ public class SimulateMultiViewDataset
 		
 		return img;
 	}
-	
+
 	public static Img< FloatType > simulate()
+	{
+		return simulate( false, rnd );
+	}
+
+	public static Img< FloatType > simulate( final boolean halfPixelOffset, final Random rnd )
 	{
 		// rendering in a higher resolution and then downsampling it makes
 		// it much smoother and somewhat more realistic, otherwise there
@@ -319,7 +343,7 @@ public class SimulateMultiViewDataset
         Img< FloatType > img = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
 
         // draw a small sphere for every pixel of a larger sphere
-        drawSpheres( img, 0, 1, scale );
+        drawSpheres( img, 0, 1, scale, halfPixelOffset, rnd );
         
         if ( scale == 2 )
         	img = downSample2x( img );
@@ -366,11 +390,14 @@ public class SimulateMultiViewDataset
      * @param minValue - the minimal intensity of one of the small spheres
      * @param maxValue - the maximal intensity of one of the small spheres
      * @param scale - the scale
+     * @param rnd - the random number generator
      * @param <T> - the type
      */
     public static < T extends RealType< T > > void drawSpheres(
             final RandomAccessibleInterval< T > randomAccessible,
-            final double minValue, final double maxValue, final int scale )
+            final double minValue, final double maxValue, final int scale,
+            final boolean halfPixelOffset,
+            final Random rnd )
     {
             // the number of dimensions
             int numDimensions = randomAccessible.numDimensions();
@@ -403,7 +430,13 @@ public class SimulateMultiViewDataset
 
             // create a cursor on the hypersphere
             HyperSphereCursor< T > cursor = hyperSphere.cursor();
-            
+
+            int size = (int)hyperSphere.size();
+
+            IJ.showProgress( 0.0 );
+
+            int i = 0;
+
             while ( cursor.hasNext() )
             {
                     cursor.fwd();
@@ -413,8 +446,21 @@ public class SimulateMultiViewDataset
 
                     // instantiate a small hypersphere at the location of the current pixel
                     // in the large hypersphere
-                    HyperSphere< T > smallSphere =
-                            new HyperSphere< T >( randomAccessible, cursor, radius );
+                    final HyperSphere< T > smallSphere;
+                    
+                    if ( halfPixelOffset )
+                    {
+                    	// shifting by one pixel in xy means half a pixel after downsampling
+                    	final long[] tmp = new long[ randomAccessible.numDimensions() ];
+                    	cursor.localize( tmp );
+                    	for ( int d = 0; d < tmp.length - 1; ++d )
+                    		tmp[ d ] += 1;
+                    	smallSphere = new HyperSphere< T >( randomAccessible, new Point( tmp ), radius );
+                    }
+                    else
+                    {
+                    	smallSphere = new HyperSphere< T >( randomAccessible, cursor, radius );
+                    }
 
                     // define the random intensity for this small sphere
                     double randomValue = rnd.nextDouble();
@@ -430,6 +476,8 @@ public class SimulateMultiViewDataset
                             for ( final T value : smallSphere )
                                     value.setReal( Math.max( randomValue, value.getRealDouble() ) );
                     }
+
+                    IJ.showProgress( ++i, size );
             }
     }
 
