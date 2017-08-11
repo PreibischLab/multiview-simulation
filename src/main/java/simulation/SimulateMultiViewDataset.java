@@ -308,8 +308,13 @@ public class SimulateMultiViewDataset
 		
 		return img;
 	}
-	
+
 	public static Img< FloatType > simulate()
+	{
+		return simulate( false );
+	}
+
+	public static Img< FloatType > simulate( final boolean halfPixelOffset )
 	{
 		// rendering in a higher resolution and then downsampling it makes
 		// it much smoother and somewhat more realistic, otherwise there
@@ -324,7 +329,7 @@ public class SimulateMultiViewDataset
         Img< FloatType > img = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
 
         // draw a small sphere for every pixel of a larger sphere
-        drawSpheres( img, 0, 1, scale );
+        drawSpheres( img, 0, 1, scale, halfPixelOffset );
         
         if ( scale == 2 )
         	img = downSample2x( img );
@@ -375,7 +380,8 @@ public class SimulateMultiViewDataset
      */
     public static < T extends RealType< T > > void drawSpheres(
             final RandomAccessibleInterval< T > randomAccessible,
-            final double minValue, final double maxValue, final int scale )
+            final double minValue, final double maxValue, final int scale,
+            final boolean halfPixelOffset )
     {
             // the number of dimensions
             int numDimensions = randomAccessible.numDimensions();
@@ -424,8 +430,21 @@ public class SimulateMultiViewDataset
 
                     // instantiate a small hypersphere at the location of the current pixel
                     // in the large hypersphere
-                    HyperSphere< T > smallSphere =
-                            new HyperSphere< T >( randomAccessible, cursor, radius );
+                    final HyperSphere< T > smallSphere;
+                    
+                    if ( halfPixelOffset )
+                    {
+                    	// shifting by one pixel in xy means half a pixel after downsampling
+                    	final long[] tmp = new long[ randomAccessible.numDimensions() ];
+                    	cursor.localize( tmp );
+                    	for ( int d = 0; d < tmp.length - 1; ++d )
+                    		tmp[ d ] += 1;
+                    	smallSphere = new HyperSphere< T >( randomAccessible, new Point( tmp ), radius );
+                    }
+                    else
+                    {
+                    	smallSphere = new HyperSphere< T >( randomAccessible, cursor, radius );
+                    }
 
                     // define the random intensity for this small sphere
                     double randomValue = rnd.nextDouble();
