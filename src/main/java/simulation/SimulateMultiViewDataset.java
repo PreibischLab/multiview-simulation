@@ -152,6 +152,20 @@ public class SimulateMultiViewDataset
 	 */
 	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR  )
 	{
+		return extractSlices( randomAccessible, inc, poissonSNR, rnd );
+	}
+
+	/**
+	 * Scans the sample with a simulated lightsheet ... the width of the lightsheet is implicitly defined by the effective PSF
+	 * 
+	 * @param randomAccessible - input
+	 * @param inc - every n'th 
+	 * @param poissonSNR - which poisson SNR is desired?
+	 * @param rnd - a random number generator
+	 * @return every n'th slice
+	 */
+	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR, final Random rnd  )
+	{
 		if ( ( randomAccessible.dimension( 2 ) - 1 ) % inc != 0 )
 			throw new RuntimeException( "Index of last z slice needs to be divisable by " + inc);
 		
@@ -170,7 +184,7 @@ public class SimulateMultiViewDataset
 			final Cursor< FloatType > c;
 			
 			if ( poissonSNR >= 0.0 )
-				c = poissonProcess( slice, poissonSNR ).localizingCursor();
+				c = poissonProcess( slice, poissonSNR, rnd ).localizingCursor();
 			else
 				c = Views.iterable( slice ).localizingCursor();
 			
@@ -191,7 +205,7 @@ public class SimulateMultiViewDataset
 		return img;
 	}
 	
-	public static Img< FloatType > poissonProcess( final RandomAccessibleInterval< FloatType > in, final float poissonSNR )
+	public static Img< FloatType > poissonProcess( final RandomAccessibleInterval< FloatType > in, final float poissonSNR, final Random rnd )
 	{
 		final Img< FloatType > out = new ArrayImgFactory< FloatType >().create( in, new FloatType() );
 
@@ -311,10 +325,10 @@ public class SimulateMultiViewDataset
 
 	public static Img< FloatType > simulate()
 	{
-		return simulate( false );
+		return simulate( false, rnd );
 	}
 
-	public static Img< FloatType > simulate( final boolean halfPixelOffset )
+	public static Img< FloatType > simulate( final boolean halfPixelOffset, final Random rnd )
 	{
 		// rendering in a higher resolution and then downsampling it makes
 		// it much smoother and somewhat more realistic, otherwise there
@@ -329,7 +343,7 @@ public class SimulateMultiViewDataset
         Img< FloatType > img = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
 
         // draw a small sphere for every pixel of a larger sphere
-        drawSpheres( img, 0, 1, scale, halfPixelOffset );
+        drawSpheres( img, 0, 1, scale, halfPixelOffset, rnd );
         
         if ( scale == 2 )
         	img = downSample2x( img );
@@ -376,12 +390,14 @@ public class SimulateMultiViewDataset
      * @param minValue - the minimal intensity of one of the small spheres
      * @param maxValue - the maximal intensity of one of the small spheres
      * @param scale - the scale
+     * @param rnd - the random number generator
      * @param <T> - the type
      */
     public static < T extends RealType< T > > void drawSpheres(
             final RandomAccessibleInterval< T > randomAccessible,
             final double minValue, final double maxValue, final int scale,
-            final boolean halfPixelOffset )
+            final boolean halfPixelOffset,
+            final Random rnd )
     {
             // the number of dimensions
             int numDimensions = randomAccessible.numDimensions();
