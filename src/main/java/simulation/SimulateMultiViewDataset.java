@@ -166,9 +166,6 @@ public class SimulateMultiViewDataset
 	 */
 	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR, final Random rnd  )
 	{
-		if ( ( randomAccessible.dimension( 2 ) - 1 ) % inc != 0 )
-			throw new RuntimeException( "Index of last z slice needs to be divisable by " + inc);
-		
 		final long[] dim = new long[]{ randomAccessible.dimension( 0 ), randomAccessible.dimension( 1 ), ( randomAccessible.dimension( 2 ) - 1 )/inc + 1 };
 		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( dim, new FloatType() );
 
