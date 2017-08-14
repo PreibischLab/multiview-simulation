@@ -1,7 +1,5 @@
 package simulation;
 
-import java.util.ArrayList;
-import java.util.Date;
 import java.util.Random;
 
 import ij.IJ;
@@ -24,27 +22,18 @@ public class SimulateTileStitching
 	float attenuation = 0.01f;
 
 	final Random rnd;
-	final Img< FloatType > con, conHalfPixel;
-	final long[] min, max;
+	Img< FloatType > psf;
+	Img< FloatType > con, conHalfPixel;
+	long[] min, max;
 	final boolean halfPixelOffset;
-	final int overlap;
+	int[] overlap;
 
-	public SimulateTileStitching( final boolean halfPixelOffset )
-	{
-		this( null, halfPixelOffset, 0.2 );
-	}
-
-	public SimulateTileStitching( final boolean halfPixelOffset, final double overlapRatio )
+	public SimulateTileStitching( final boolean halfPixelOffset, final double[] overlapRatio )
 	{
 		this( null, halfPixelOffset, overlapRatio );
 	}
 
-	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset )
-	{
-		this( rnd, halfPixelOffset, 0.2 );
-	}
-
-	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset, final double overlapRatio )
+	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset, final double[] overlapRatio )
 	{
 		this.halfPixelOffset = halfPixelOffset;
 
@@ -53,59 +42,106 @@ public class SimulateTileStitching
 		else
 			this.rnd = rnd;
 
+		this.psf = Tools.open( dir + "Angle0.tif", true );
+
+		init( overlapRatio );
+	}
+
+	public void init( final double[] overlapRatio )
+	{
 		// artificially rendered object based on which everything is computed,
 		// including the ground-truth image, which is rotated once by the angle offset
 		// so that it is realistic
-		System.out.println( new Date( System.currentTimeMillis() ) + ": rendering basis for ground truth" );
-		final Img< FloatType > groundTruth = SimulateMultiViewDataset.simulate( false, new Random( 464232194 ) );
-		final Img< FloatType > groundTruthHalfPixel = SimulateMultiViewDataset.simulate( true, new Random( 464232194 ) );
+		final int seed = rnd.nextInt(); // same result for half pixel and not
 
-		this.overlap = (int)Math.round( groundTruth.dimension( 0 ) * overlapRatio );
-		System.out.println( "Overlap: " + overlap );
+		final Thread[] threads = new Thread[ 2 ];
 
-		this.min = new long[ groundTruth.numDimensions() ];
-		this.max = new long[ groundTruth.numDimensions() ];
+		threads[ 0 ] = new Thread( new Runnable()
+		{
+			public void run()
+			{
+				System.out.println( "Thread 1: simulate " );
+				final Img< FloatType > groundTruth = SimulateMultiViewDataset.simulate( false, new Random( seed ) );
+				final Img< FloatType > att = SimulateMultiViewDataset.attenuate3d( groundTruth, attenuation );
+				con = SimulateMultiViewDataset.convolve( att, psf );
+				Tools.adjustImage( con, SimulateMultiViewDataset.minValue, SimulateMultiViewDataset.avgIntensity );
+			}
+		} );
 
-		System.out.println( new Date( System.currentTimeMillis() ) + ": attenuation " );
-		Img<FloatType> att = SimulateMultiViewDataset.attenuate3d( groundTruth, attenuation );
-		Img<FloatType> attHalfPixel = SimulateMultiViewDataset.attenuate3d( groundTruthHalfPixel, attenuation );
+		threads[ 1 ] = new Thread( new Runnable()
+		{
+			public void run()
+			{
+				System.out.println( "Thread 2: simulate " );
+				final Img< FloatType > groundTruthHalfPixel = SimulateMultiViewDataset.simulate( true, new Random( seed ) );
+				final Img< FloatType > attHalfPixel = SimulateMultiViewDataset.attenuate3d( groundTruthHalfPixel, attenuation );
+				conHalfPixel = SimulateMultiViewDataset.convolve( attHalfPixel, psf );
+				Tools.adjustImage( conHalfPixel, SimulateMultiViewDataset.minValue, SimulateMultiViewDataset.avgIntensity );
+			}
+		} );
 
-		//ImageJFunctions.show( att ).setTitle( "att" );
+		runThreads( threads );
 
-		System.out.println( new Date( System.currentTimeMillis() ) + ": convolving "  );
-		Img< FloatType > psf = Tools.open( dir + "Angle0.tif", true );
-		this.con = SimulateMultiViewDataset.convolve( att, psf );
-		this.conHalfPixel = SimulateMultiViewDataset.convolve( attHalfPixel, psf );
+		this.overlap = new int[ con.numDimensions() ];
+		for ( int d = 0; d < con.numDimensions(); ++d )
+			this.overlap[ d ] = (int)Math.round( con.dimension( 0 ) * overlapRatio[ 0 ] );
 
-		Tools.adjustImage( con, SimulateMultiViewDataset.minValue, SimulateMultiViewDataset.avgIntensity );
-		Tools.adjustImage( conHalfPixel, SimulateMultiViewDataset.minValue, SimulateMultiViewDataset.avgIntensity );
+		this.min = new long[ con.numDimensions() ];
+		this.max = new long[ con.numDimensions() ];
 	}
+
+	private Img< FloatType > split0, split1;
 
 	public Pair< Img< FloatType >, Img< FloatType > > getNextPair( final float snr )
 	{
-		final ArrayList< Img< FloatType > > imgs = new ArrayList<>();
+		final Thread[] threads = new Thread[ 2 ];
 
-		for ( int tile = 0; tile <= 1; ++tile )
+		final int seed0 = rnd.nextInt();
+		final int seed1 = rnd.nextInt();
+
+		// tile 0
+		threads[ 0 ] = new Thread( new Runnable()
 		{
-			getInterval( min, max, tile );
-
-			final RandomAccessibleInterval< FloatType > split;
-
-			if ( tile == 1 && halfPixelOffset )
+			public void run()
 			{
-				//System.out.println( new Date( System.currentTimeMillis() ) + ": extracting slices tile " + tile + " (0.5px offset), snr=" +snr );
-				split = Views.zeroMin( Views.interval( conHalfPixel, min, max ) );
-			}
-			else
-			{
+				final long[] min1 = min.clone();
+				final long[] max1 = max.clone();
+
+				getInterval( min1, max1, 0 );
+
 				//System.out.println( new Date( System.currentTimeMillis() ) + ": extracting slices tile " + tile + " snr=" +snr );
-				split = Views.zeroMin( Views.interval( con, min, max ) );
+				split0 = SimulateMultiViewDataset.extractSlices(
+						Views.zeroMin( Views.interval( con, min1, max1 ) ),
+						lightsheetSpacing,
+						snr,
+						new Random( seed0 ) );
 			}
+		} );
 
-			imgs.add( SimulateMultiViewDataset.extractSlices( split, lightsheetSpacing, snr ) );
-		}
+		// tile 1
+		threads[ 1 ] = new Thread( new Runnable()
+		{
+			public void run()
+			{
+				final long[] min1 = min.clone();
+				final long[] max1 = max.clone();
 
-		return new ValuePair<>( imgs.get( 0 ), imgs.get( 1 ) );
+				getInterval( min1, max1, 1 );
+
+				if ( halfPixelOffset )
+					split1 = SimulateMultiViewDataset.extractSlices(
+							Views.zeroMin( Views.interval( conHalfPixel, min1, max1 ) ),
+							lightsheetSpacing, snr, new Random( seed1 ) );
+				else
+					split1 = SimulateMultiViewDataset.extractSlices(
+							Views.zeroMin( Views.interval( con, min1, max1 ) ),
+							lightsheetSpacing, snr, new Random( seed1 ) );
+			}
+		} );
+
+		runThreads( threads );
+
+		return new ValuePair<>( split0, split1 );
 	}
 
 	public double[] getCorrectTranslation()
@@ -119,9 +155,14 @@ public class SimulateTileStitching
 
 		if ( halfPixelOffset )
 		{
-			translation[ 0 ] += 0.5;
-			translation[ 1 ] += 0.5;
+			// unintutive, but true. If the content of the right image is shifted
+			// more to the right (by 0.5 pixels), means that in order to match it
+			// has to be shifted less to the left (take to sheets of paper to understand :)
+			translation[ 0 ] -= 0.5;
+			translation[ 1 ] -= 0.5;
 		}
+
+		translation[ 2 ] /= lightsheetSpacing;
 
 		return translation;
 	}
@@ -132,9 +173,15 @@ public class SimulateTileStitching
 		con.max( max );
 
 		if ( tile == 0 )
-			max[ 0 ] = con.dimension( 0 ) / 2 + overlap;
+		{
+			for ( int d = 0; d < min.length; ++d )
+				max[ d ] = (int)con.dimension( d ) / 2 + overlap[ d ];
+		}
 		else
-			min[ 0 ] = con.dimension( 0 ) / 2 - overlap;
+		{
+			for ( int d = 0; d < min.length; ++d )
+				min[ d ] = (int)con.dimension( 0 ) / 2 - overlap[ d ];
+		}
 	}
 
 	public static void show( final RandomAccessibleInterval< FloatType > img, final String title )
@@ -147,6 +194,19 @@ public class SimulateTileStitching
 		imp.show();
 	}
 
+	public static void runThreads( final Thread[] threads )
+	{
+		for ( int ithread = 0; ithread < threads.length; ++ithread )
+			threads[ ithread ].start();
+
+		try
+		{
+			for ( int ithread = 0; ithread < threads.length; ++ithread )
+				threads[ ithread ].join();
+		}
+		catch ( InterruptedException ie ) { throw new RuntimeException(ie); }
+	}
+
 	public static void main( String[] args )
 	{
 		new ImageJ();
@@ -154,7 +214,7 @@ public class SimulateTileStitching
 		final double overlap = 0.2;
 		final float snr = 8;
 
-		final SimulateTileStitching sts = new SimulateTileStitching( new Random( System.currentTimeMillis() ), true, overlap );
+		final SimulateTileStitching sts = new SimulateTileStitching( new Random( System.currentTimeMillis() ), true, Util.getArrayFromValue( overlap, 3 ) );
 		
 		IJ.log( "Known shift (right relative to left): " + Util.printCoordinates( sts.getCorrectTranslation() ) );
 
