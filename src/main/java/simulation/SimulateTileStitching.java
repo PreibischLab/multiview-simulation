@@ -84,7 +84,9 @@ public class SimulateTileStitching
 
 		this.overlap = new int[ con.numDimensions() ];
 		for ( int d = 0; d < con.numDimensions(); ++d )
-			this.overlap[ d ] = (int)Math.round( con.dimension( 0 ) * overlapRatio[ 0 ] );
+			this.overlap[ d ] = (int)Math.round( con.dimension( d ) * overlapRatio[ d ] / 2 );
+
+		System.out.println( "Overlap: " + Util.printCoordinates( this.overlap ) );
 
 		this.min = new long[ con.numDimensions() ];
 		this.max = new long[ con.numDimensions() ];
@@ -176,12 +178,17 @@ public class SimulateTileStitching
 		{
 			for ( int d = 0; d < min.length; ++d )
 				max[ d ] = (int)con.dimension( d ) / 2 + overlap[ d ];
+
+			System.out.println( "Tile0: " + Util.printCoordinates( min ) + " >> " + Util.printCoordinates( max ) );
 		}
 		else
 		{
 			for ( int d = 0; d < min.length; ++d )
 				min[ d ] = (int)con.dimension( 0 ) / 2 - overlap[ d ];
+
+			System.out.println( "Tile1: " + Util.printCoordinates( min ) + " >> " + Util.printCoordinates( max ) );
 		}
+
 	}
 
 	public static void show( final RandomAccessibleInterval< FloatType > img, final String title )
