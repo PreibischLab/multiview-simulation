@@ -25,7 +25,7 @@ public class SimulateTileStitching
 	Img< FloatType > psf;
 	Img< FloatType > con, conHalfPixel;
 	long[] min, max;
-	final boolean halfPixelOffset;
+	boolean halfPixelOffset;
 	int[] overlap;
 
 	public SimulateTileStitching( final boolean halfPixelOffset, final double[] overlapRatio )
@@ -35,8 +35,6 @@ public class SimulateTileStitching
 
 	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset, final double[] overlapRatio )
 	{
-		this.halfPixelOffset = halfPixelOffset;
-
 		if ( rnd == null )
 			this.rnd = new Random( 464232194 );
 		else
@@ -44,11 +42,13 @@ public class SimulateTileStitching
 
 		this.psf = Tools.open( dir + "Angle0.tif", true );
 
-		init( overlapRatio );
+		init( overlapRatio, halfPixelOffset );
 	}
 
-	public void init( final double[] overlapRatio )
+	public void init( final double[] overlapRatio, boolean halfPixelOffset )
 	{
+		this.halfPixelOffset = halfPixelOffset;
+
 		// artificially rendered object based on which everything is computed,
 		// including the ground-truth image, which is rotated once by the angle offset
 		// so that it is realistic
