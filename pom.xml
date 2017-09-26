@@ -1,9 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
-  <modelVersion>4.0.0</modelVersion>
-  <groupId>net.imglib2.simulation</groupId>
-  <artifactId>multiview-simulation</artifactId>
-  <name>multiview-simulation</name>
-  <description>code for simulating a multi-view acquisition including attenuation, convolution, reduced sampling and poission noise</description>
+	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
 		<groupId>sc.fiji</groupId>
@@ -12,40 +9,18 @@
 		<relativePath />
 	</parent>
 
+	<groupId>net.imglib2.simulation</groupId>
+	<artifactId>multiview-simulation</artifactId>
+	<version>1.0.6-SNAPSHOT</version>
+
+	<name>multiview-simulation</name>
+	<description>code for simulating a multi-view acquisition including attenuation, convolution, reduced sampling and poission noise</description>
 	<licenses>
 		<license>
 			<name>GNU Public License v2</name>
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
-	
-  <dependencies>
-  	<dependency>
-  		<groupId>net.imglib2</groupId>
-  		<artifactId>imglib2-ij</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>net.imglib2</groupId>
-  		<artifactId>imglib2-algorithm</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>net.imglib2</groupId>
-  		<artifactId>imglib2-realtransform</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>mpicbg</groupId>
-  		<artifactId>mpicbg</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>net.imglib2</groupId>
-  		<artifactId>imglib2-algorithm-gpl</artifactId>
-  	</dependency>
-  	<dependency>
-  		<groupId>sc.fiji</groupId>
-  		<artifactId>spim_data</artifactId>
-  		<version>2.2.0</version>
-  	</dependency>
-  </dependencies>
 
 	<repositories>
 		<!-- NB: for project parent -->
@@ -55,5 +30,31 @@
 		</repository>
 	</repositories>
 
-	<version>1.0.6-SNAPSHOT</version>
+	<dependencies>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-ij</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-algorithm</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-realtransform</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>mpicbg</groupId>
+			<artifactId>mpicbg</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>net.imglib2</groupId>
+			<artifactId>imglib2-algorithm-gpl</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>sc.fiji</groupId>
+			<artifactId>spim_data</artifactId>
+			<version>2.2.0</version>
+		</dependency>
+	</dependencies>
 </project>
