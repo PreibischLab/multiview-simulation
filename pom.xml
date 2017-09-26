@@ -3,27 +3,99 @@
 	<modelVersion>4.0.0</modelVersion>
 
 	<parent>
-		<groupId>sc.fiji</groupId>
-		<artifactId>pom-bigdataviewer</artifactId>
-		<version>3.3.0</version>
+		<groupId>org.scijava</groupId>
+		<artifactId>pom-scijava</artifactId>
+		<version>17.0.0</version>
 		<relativePath />
 	</parent>
 
-	<groupId>net.imglib2.simulation</groupId>
+	<groupId>net.preibisch</groupId>
 	<artifactId>multiview-simulation</artifactId>
-	<version>1.0.6-SNAPSHOT</version>
+	<version>0.1.0-SNAPSHOT</version>
 
-	<name>multiview-simulation</name>
-	<description>code for simulating a multi-view acquisition including attenuation, convolution, reduced sampling and poission noise</description>
+	<name>Multiview Simulation</name>
+	<description>Library for simulating a multi-view acquisition including
+attenuation, convolution, reduced sampling and poission noise.</description>
+	<url>https://github.com/PreibischLab/multiview-simulation</url>
+	<inceptionYear>2014</inceptionYear>
+	<organization>
+		<name>Preibisch Lab</name>
+		<url>http://preibischlab.mdc-berlin.de</url>
+	</organization>
 	<licenses>
 		<license>
-			<name>GNU Public License v2</name>
+			<name>GNU General Public License v2+</name>
+			<url>https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html</url>
 			<distribution>repo</distribution>
 		</license>
 	</licenses>
 
+	<developers>
+		<developer>
+			<id>StephanPreibisch</id>
+			<name>Stephan Preibisch</name>
+			<url>http://imagej.net/User:StephanP</url>
+			<roles>
+				<role>founder</role>
+				<role>lead</role>
+				<role>developer</role>
+				<role>debugger</role>
+				<role>reviewer</role>
+				<role>support</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+		<developer>
+			<id>hoerldavid</id>
+			<name>David Hoerl</name>
+			<url>http://imagej.net/User:Davidhoerl</url>
+			<roles>
+				<role>developer</role>
+				<role>debugger</role>
+				<role>reviewer</role>
+				<role>support</role>
+				<role>maintainer</role>
+			</roles>
+		</developer>
+	</developers>
+	<contributors>
+		<contributor>
+			<name>Curtis Rueden</name>
+			<url>http://imagej.net/User:Rueden</url>
+			<properties><id>ctrueden</id></properties>
+		</contributor>
+	</contributors>
+
+	<mailingLists>
+		<mailingList>
+			<name>ImageJ Forum</name>
+			<archive>http://forum.imagej.net/</archive>
+		</mailingList>
+	</mailingLists>
+
+	<scm>
+		<connection>scm:git:git://github.com/PreibischLab/multiview-simulation</connection>
+		<developerConnection>scm:git:git@github.com:PreibischLab/multiview-simulation</developerConnection>
+		<tag>HEAD</tag>
+		<url>https://github.com/PreibischLab/multiview-simulation</url>
+	</scm>
+	<issueManagement>
+		<system>GitHub Issues</system>
+		<url>https://github.com/PreibischLab/multiview-simulation/issues</url>
+	</issueManagement>
+	<ciManagement>
+		<system>Travis CI</system>
+		<url>https://travis-ci.org/PreibischLab/multiview-simulation</url>
+	</ciManagement>
+
+	<properties>
+		<package-name>net.preibisch</package-name>
+
+		<license.licenseName>gpl_v2</license.licenseName>
+		<license.copyrightOwners>Multiview Simulation developers.</license.copyrightOwners>
+	</properties>
+
 	<repositories>
-		<!-- NB: for project parent -->
 		<repository>
 			<id>imagej.public</id>
 			<url>http://maven.imagej.net/content/groups/public</url>
@@ -54,7 +126,6 @@
 		<dependency>
 			<groupId>sc.fiji</groupId>
 			<artifactId>spim_data</artifactId>
-			<version>2.2.0</version>
 		</dependency>
 	</dependencies>
 </project>
