@@ -89,7 +89,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 	</ciManagement>
 
 	<properties>
-		<package-name>net.preibisch</package-name>
+		<package-name>net.preibisch.simulation</package-name>
 
 		<license.licenseName>gpl_v2</license.licenseName>
 		<license.copyrightOwners>Multiview Simulation developers.</license.copyrightOwners>
