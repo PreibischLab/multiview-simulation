@@ -1,4 +1,4 @@
-package simulation;
+package net.preibisch.simulation;
 
 import ij.ImagePlus;
 import ij.io.FileSaver;
@@ -8,7 +8,6 @@ import ij.process.ImageProcessor;
 import java.awt.Image;
 import java.util.Random;
 
-import simulation.uncommons.PoissonGenerator;
 import mpicbg.util.RealSum;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
@@ -20,6 +19,7 @@ import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.view.Views;
+import net.preibisch.simulation.uncommons.PoissonGenerator;
 
 /**
  * static helper methods

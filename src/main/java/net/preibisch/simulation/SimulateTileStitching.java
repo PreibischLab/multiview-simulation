@@ -1,4 +1,4 @@
-package simulation;
+package net.preibisch.simulation;
 
 import java.util.Random;
 

@@ -1,4 +1,4 @@
-package simulation.uncommons;
+package net.preibisch.simulation.uncommons;
 //============================================================================
 //Copyright 2006-2010 Daniel W. Dyer
 //

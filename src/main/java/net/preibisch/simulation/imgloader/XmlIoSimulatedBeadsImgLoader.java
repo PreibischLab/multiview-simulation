@@ -1,4 +1,4 @@
-package simulation.imgloader;
+package net.preibisch.simulation.imgloader;
 
 import static mpicbg.spim.data.XmlKeys.IMGLOADER_FORMAT_ATTRIBUTE_NAME;
 
@@ -9,10 +9,9 @@ import mpicbg.spim.data.generic.sequence.AbstractSequenceDescription;
 import mpicbg.spim.data.generic.sequence.ImgLoaderIo;
 import mpicbg.spim.data.generic.sequence.XmlIoBasicImgLoader;
 import net.imglib2.FinalInterval;
+import net.preibisch.simulation.SimulateBeads;
 
 import org.jdom2.Element;
-
-import simulation.SimulateBeads;
 
 @ImgLoaderIo( format = "spimreconstruction.simulatedbeads", type = SimulatedBeadsImgLoader.class )
 public class XmlIoSimulatedBeadsImgLoader implements XmlIoBasicImgLoader< SimulatedBeadsImgLoader >

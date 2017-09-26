@@ -1,10 +1,10 @@
-package simulation;
+package net.preibisch.simulation;
 
-import simulation.uncommons.NumberGenerator;
 import net.imglib2.Cursor;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.view.Views;
+import net.preibisch.simulation.uncommons.NumberGenerator;
 
 //import org.uncommons.maths.number.NumberGenerator;
 

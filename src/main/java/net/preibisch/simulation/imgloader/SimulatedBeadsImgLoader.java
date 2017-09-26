@@ -1,4 +1,4 @@
-package simulation.imgloader;
+package net.preibisch.simulation.imgloader;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -16,7 +16,7 @@ import mpicbg.spim.data.sequence.ViewSetup;
 import net.imglib2.FinalInterval;
 import net.imglib2.Interval;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
-import simulation.SimulateBeads;
+import net.preibisch.simulation.SimulateBeads;
 
 public class SimulatedBeadsImgLoader extends LegacyImgLoaderWrapper< UnsignedShortType, LegacySimulatedBeadsImgLoader >
 {

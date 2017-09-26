@@ -1,4 +1,4 @@
-package simulation.imgloader;
+package net.preibisch.simulation.imgloader;
 
 import java.io.File;
 import java.util.ArrayList;
@@ -40,9 +40,9 @@ import net.imglib2.realtransform.Translation3D;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.util.Intervals;
 import net.imglib2.util.Util;
-import simulation.RegularTranformHelpers;
-import simulation.RegularTranformHelpers.RegularTranslationParameters;
-import simulation.SimulateBeads2;
+import net.preibisch.simulation.RegularTranformHelpers;
+import net.preibisch.simulation.SimulateBeads2;
+import net.preibisch.simulation.RegularTranformHelpers.RegularTranslationParameters;
 
 public class SimulatedBeadsImgLoader2 extends LegacyImgLoaderWrapper< UnsignedShortType, LegacySimulatedBeadsImgLoader2 >
 {

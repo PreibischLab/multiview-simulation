@@ -1,4 +1,4 @@
-package simulation.uncommons;
+package net.preibisch.simulation.uncommons;
 
 /**
  * Convenience implementation of {@link NumberGenerator} that always

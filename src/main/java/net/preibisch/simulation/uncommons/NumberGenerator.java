@@ -1,4 +1,4 @@
-package simulation.uncommons;
+package net.preibisch.simulation.uncommons;
 
 /**
  * Interface for providing different types of sequences of numbers.  This is

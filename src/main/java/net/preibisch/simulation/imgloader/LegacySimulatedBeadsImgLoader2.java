@@ -1,4 +1,4 @@
-package simulation.imgloader;
+package net.preibisch.simulation.imgloader;
 
 import java.util.Arrays;
 import java.util.HashMap;
@@ -16,8 +16,8 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.type.numeric.integer.UnsignedShortType;
 import net.imglib2.type.numeric.real.FloatType;
-import simulation.SimulateBeads;
-import simulation.SimulateBeads2;
+import net.preibisch.simulation.SimulateBeads;
+import net.preibisch.simulation.SimulateBeads2;
 
 public class LegacySimulatedBeadsImgLoader2 implements LegacyImgLoader< UnsignedShortType >
 {
