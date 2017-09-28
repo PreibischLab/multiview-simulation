@@ -1,4 +1,26 @@
-package simulation;
+/*-
+ * #%L
+ * Library for simulating a multi-view acquisition including
+ * attenuation, convolution, reduced sampling and poission noise.
+ * %%
+ * Copyright (C) 2014 - 2017 Multiview Simulation developers.
+ * %%
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as
+ * published by the Free Software Foundation, either version 2 of the
+ * License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public
+ * License along with this program.  If not, see
+ * <http://www.gnu.org/licenses/gpl-2.0.html>.
+ * #L%
+ */
+package net.preibisch.simulation;
 
 import java.util.Random;
 
@@ -25,7 +47,7 @@ public class SimulateTileStitching
 	Img< FloatType > psf;
 	Img< FloatType > con, conHalfPixel;
 	long[] min, max;
-	final boolean halfPixelOffset;
+	boolean halfPixelOffset;
 	int[] overlap;
 
 	public SimulateTileStitching( final boolean halfPixelOffset, final double[] overlapRatio )
@@ -35,8 +57,6 @@ public class SimulateTileStitching
 
 	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset, final double[] overlapRatio )
 	{
-		this.halfPixelOffset = halfPixelOffset;
-
 		if ( rnd == null )
 			this.rnd = new Random( 464232194 );
 		else
@@ -44,11 +64,13 @@ public class SimulateTileStitching
 
 		this.psf = Tools.open( dir + "Angle0.tif", true );
 
-		init( overlapRatio );
+		init( overlapRatio, halfPixelOffset );
 	}
 
-	public void init( final double[] overlapRatio )
+	public void init( final double[] overlapRatio, boolean halfPixelOffset )
 	{
+		this.halfPixelOffset = halfPixelOffset;
+
 		// artificially rendered object based on which everything is computed,
 		// including the ground-truth image, which is rotated once by the angle offset
 		// so that it is realistic
