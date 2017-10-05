@@ -93,6 +93,9 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 
 		<license.licenseName>gpl_v2</license.licenseName>
 		<license.copyrightOwners>Multiview Simulation developers.</license.copyrightOwners>
+
+		<!-- NB: Deploy releases to the ImageJ Maven repository. -->
+		<releaseProfiles>deploy-to-imagej</releaseProfiles>
 	</properties>
 
 	<repositories>
