@@ -1,3 +1,5 @@
+[![](https://travis-ci.org/PreibischLab/multiview-simulation.svg?branch=master)](https://travis-ci.org/PreibischLab/multiview-simulation)
+
 multiview-simulation
 ====================
 
