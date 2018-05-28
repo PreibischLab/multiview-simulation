@@ -11,7 +11,7 @@
 
 	<groupId>net.preibisch</groupId>
 	<artifactId>multiview-simulation</artifactId>
-	<version>0.2.0-SNAPSHOT</version>
+	<version>0.2.0</version>
 
 	<name>Multiview Simulation</name>
 	<description>Library for simulating a multi-view acquisition including
@@ -76,7 +76,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 	<scm>
 		<connection>scm:git:git://github.com/PreibischLab/multiview-simulation</connection>
 		<developerConnection>scm:git:git@github.com:PreibischLab/multiview-simulation</developerConnection>
-		<tag>HEAD</tag>
+		<tag>multiview-simulation-0.2.0</tag>
 		<url>https://github.com/PreibischLab/multiview-simulation</url>
 	</scm>
 	<issueManagement>
