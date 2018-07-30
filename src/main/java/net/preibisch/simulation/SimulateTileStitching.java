@@ -22,7 +22,11 @@
  */
 package net.preibisch.simulation;
 
+import java.util.ArrayList;
 import java.util.Random;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import ij.IJ;
 import ij.ImageJ;
@@ -39,6 +43,7 @@ import net.imglib2.view.Views;
 public class SimulateTileStitching
 {
 	final String dir = "src/main/resources/";
+	final ExecutorService service;
 
 	int lightsheetSpacing = 3;
 	float attenuation = 0.01f;
@@ -50,18 +55,19 @@ public class SimulateTileStitching
 	boolean halfPixelOffset;
 	int[] overlap;
 
-	public SimulateTileStitching( final boolean halfPixelOffset, final double[] overlapRatio )
+	public SimulateTileStitching( final boolean halfPixelOffset, final double[] overlapRatio, final ExecutorService service )
 	{
-		this( null, halfPixelOffset, overlapRatio );
+		this( null, halfPixelOffset, overlapRatio, service );
 	}
 
-	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset, final double[] overlapRatio )
+	public SimulateTileStitching( final Random rnd, final boolean halfPixelOffset, final double[] overlapRatio, final ExecutorService service )
 	{
 		if ( rnd == null )
 			this.rnd = new Random( 464232194 );
 		else
 			this.rnd = rnd;
 
+		this.service = service;
 		this.psf = Tools.open( dir + "Angle0.tif", true );
 
 		init( overlapRatio, halfPixelOffset );
@@ -76,33 +82,39 @@ public class SimulateTileStitching
 		// so that it is realistic
 		final int seed = rnd.nextInt(); // same result for half pixel and not
 
-		final Thread[] threads = new Thread[ 2 ];
+		final ArrayList< Callable< Void > > tasks = new ArrayList< Callable< Void > >();
 
-		threads[ 0 ] = new Thread( new Runnable()
+		tasks.add( new Callable< Void >()
 		{
-			public void run()
+			@Override
+			public Void call() throws Exception
 			{
 				System.out.println( "Thread 1: simulate " );
 				final Img< FloatType > groundTruth = SimulateMultiViewDataset.simulate( false, new Random( seed ) );
 				final Img< FloatType > att = SimulateMultiViewDataset.attenuate3d( groundTruth, attenuation );
-				con = SimulateMultiViewDataset.convolve( att, psf );
+				con = SimulateMultiViewDataset.convolve( att, psf, service );
 				Tools.adjustImage( con, SimulateMultiViewDataset.minValue, SimulateMultiViewDataset.avgIntensity );
-			}
-		} );
 
-		threads[ 1 ] = new Thread( new Runnable()
+				return null;
+			}
+		});
+
+		tasks.add( new Callable< Void >()
 		{
-			public void run()
+			@Override
+			public Void call() throws Exception
 			{
 				System.out.println( "Thread 2: simulate " );
 				final Img< FloatType > groundTruthHalfPixel = SimulateMultiViewDataset.simulate( true, new Random( seed ) );
 				final Img< FloatType > attHalfPixel = SimulateMultiViewDataset.attenuate3d( groundTruthHalfPixel, attenuation );
-				conHalfPixel = SimulateMultiViewDataset.convolve( attHalfPixel, psf );
+				conHalfPixel = SimulateMultiViewDataset.convolve( attHalfPixel, psf, service );
 				Tools.adjustImage( conHalfPixel, SimulateMultiViewDataset.minValue, SimulateMultiViewDataset.avgIntensity );
-			}
-		} );
 
-		runThreads( threads );
+				return null;
+			}
+		});
+
+		runThreads( tasks, service );
 
 		this.overlap = new int[ con.numDimensions() ];
 		for ( int d = 0; d < con.numDimensions(); ++d )
@@ -123,10 +135,13 @@ public class SimulateTileStitching
 		final int seed0 = rnd.nextInt();
 		final int seed1 = rnd.nextInt();
 
+		final ArrayList< Callable< Void > > tasks = new ArrayList< Callable< Void > >();
+
 		// tile 0
-		threads[ 0 ] = new Thread( new Runnable()
+		tasks.add( new Callable< Void >()
 		{
-			public void run()
+			@Override
+			public Void call() throws Exception
 			{
 				final long[] min1 = min.clone();
 				final long[] max1 = max.clone();
@@ -139,13 +154,16 @@ public class SimulateTileStitching
 						lightsheetSpacing,
 						snr,
 						new Random( seed0 ) );
+
+				return null;
 			}
-		} );
+		});
 
 		// tile 1
-		threads[ 1 ] = new Thread( new Runnable()
+		tasks.add( new Callable< Void >()
 		{
-			public void run()
+			@Override
+			public Void call() throws Exception
 			{
 				final long[] min1 = min.clone();
 				final long[] max1 = max.clone();
@@ -160,10 +178,12 @@ public class SimulateTileStitching
 					split1 = SimulateMultiViewDataset.extractSlices(
 							Views.zeroMin( Views.interval( con, min1, max1 ) ),
 							lightsheetSpacing, snr, new Random( seed1 ) );
-			}
-		} );
 
-		runThreads( threads );
+				return null;
+			}
+		});
+
+		runThreads( tasks, service );
 
 		return new ValuePair<>( split0, split1 );
 	}
@@ -223,17 +243,18 @@ public class SimulateTileStitching
 		imp.show();
 	}
 
-	public static void runThreads( final Thread[] threads )
+	public static void runThreads( final ArrayList< Callable< Void > > tasks, final ExecutorService service )
 	{
-		for ( int ithread = 0; ithread < threads.length; ++ithread )
-			threads[ ithread ].start();
-
 		try
 		{
-			for ( int ithread = 0; ithread < threads.length; ++ithread )
-				threads[ ithread ].join();
+			// invokeAll() returns when all tasks are complete
+			service.invokeAll( tasks );
 		}
-		catch ( InterruptedException ie ) { throw new RuntimeException(ie); }
+		catch ( final InterruptedException e )
+		{
+			e.printStackTrace();
+			return;
+		}
 	}
 
 	public static void main( String[] args )
@@ -243,7 +264,11 @@ public class SimulateTileStitching
 		final double overlap = 0.2;
 		final float snr = 8;
 
-		final SimulateTileStitching sts = new SimulateTileStitching( new Random( System.currentTimeMillis() ), true, Util.getArrayFromValue( overlap, 3 ) );
+		final SimulateTileStitching sts = new SimulateTileStitching(
+				new Random( System.currentTimeMillis() ),
+				true,
+				Util.getArrayFromValue( overlap, 3 ),
+				Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() ) );
 		
 		IJ.log( "Known shift (right relative to left): " + Util.printCoordinates( sts.getCorrectTranslation() ) );
 

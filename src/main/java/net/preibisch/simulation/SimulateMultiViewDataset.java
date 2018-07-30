@@ -25,6 +25,8 @@ package net.preibisch.simulation;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.Random;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import ij.IJ;
 import ij.ImageJ;
@@ -39,10 +41,14 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.algorithm.fft2.FFTConvolution;
 import net.imglib2.algorithm.region.hypersphere.HyperSphere;
 import net.imglib2.algorithm.region.hypersphere.HyperSphereCursor;
+import net.imglib2.exception.IncompatibleTypeException;
 import net.imglib2.img.Img;
+import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.type.numeric.RealType;
+import net.imglib2.type.numeric.complex.ComplexFloatType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
@@ -244,11 +250,12 @@ public class SimulateMultiViewDataset
 		return out;
 	}
 	
-	public static Img< FloatType > convolve( final Img< FloatType > img, final Img< FloatType > psf )
+	public static Img< FloatType > convolve( final Img< FloatType > img, final Img< FloatType > psf, final ExecutorService service )
 	{
 		Tools.normImage( psf );
 		final Img< FloatType > result = img.factory().create( img, img.firstElement() );
-		final FFTConvolution< FloatType > conv = new FFTConvolution<FloatType>( img, psf, result );
+		final FFTConvolution< FloatType > conv = new FFTConvolution<FloatType>( img, psf, result, getFFTFactory( img ), service );
+		
 		// this fixes the wrong default kernel flipping in older versions of FFTConvolution 
 		conv.setComputeComplexConjugate(false);
 		conv.convolve();
@@ -256,6 +263,20 @@ public class SimulateMultiViewDataset
 		return result;
 	}
 	
+	protected static ImgFactory< ComplexFloatType > getFFTFactory( final Img< ? extends RealType< ? > > img )
+	{
+		try
+		{
+			return img.factory().imgFactory( new ComplexFloatType() );
+		}
+		catch ( final IncompatibleTypeException e )
+		{
+			if ( img.size() > Integer.MAX_VALUE / 2 )
+				return new CellImgFactory< ComplexFloatType >( 1024 );
+			return new ArrayImgFactory< ComplexFloatType >();
+		}
+	}
+
 	public static Img< FloatType > computeWeightImage( final RandomAccessibleInterval< FloatType > randomAccessible, final double delta )
 	{
 		// over which the cosine function spans
@@ -503,7 +524,8 @@ public class SimulateMultiViewDataset
 	public static void main( String[] args )
 	{
 		final String dir = "src/main/resources/";
-		
+		final ExecutorService service = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
+
 		new ImageJ();
 
 		final float poissonSNR = 25f;
@@ -555,7 +577,7 @@ public class SimulateMultiViewDataset
 			
 			System.out.println( new Date( System.currentTimeMillis() ) + ": convolving angle " + angle );
 			Img< FloatType > psf = Tools.open( dir + "Angle" + angle + ".tif", true );
-			Img<FloatType> con = convolve( att, psf );
+			Img<FloatType> con = convolve( att, psf, service );
 			
 			Tools.adjustImage( con, minValue, avgIntensity );
 			
