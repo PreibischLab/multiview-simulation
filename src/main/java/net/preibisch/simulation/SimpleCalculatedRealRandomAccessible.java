@@ -12,6 +12,7 @@ import net.imglib2.RealRandomAccessible;
 import net.imglib2.Sampler;
 import net.imglib2.type.Type;
 
+
 public class SimpleCalculatedRealRandomAccessible<T extends Type< T >> implements RealRandomAccessible< T >
 {
 	
@@ -95,7 +96,9 @@ public class SimpleCalculatedRealRandomAccessible<T extends Type< T >> implement
 		@Override
 		public RealRandomAccess< T > copyRealRandomAccess()
 		{
-			return new CalculatedRealRandomAccess();
+			RealRandomAccess< T > res = new CalculatedRealRandomAccess();
+			res.setPosition( this );
+			return res;
 		}
 		
 	}

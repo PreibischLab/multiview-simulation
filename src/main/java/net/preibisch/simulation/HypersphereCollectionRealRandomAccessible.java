@@ -9,6 +9,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 
+import com.google.gson.GsonBuilder;
+
 import ij.ImageJ;
 import net.imglib2.FinalInterval;
 import net.imglib2.KDTree;
@@ -74,7 +76,7 @@ public class HypersphereCollectionRealRandomAccessible< T extends Type< T > > im
 		maxRadius = Math.max( maxRadius, radius );
 	}
 
-	private void prepareKDTree()
+	private synchronized void prepareKDTree()
 	{
 		if (!kdNeedsUpdate)
 			return;
@@ -121,6 +123,7 @@ public class HypersphereCollectionRealRandomAccessible< T extends Type< T > > im
 		@Override
 		public T get()
 		{
+
 			rs.search( this, maxRadius, false );
 
 			if (rs.numNeighbors() < 1)
@@ -158,98 +161,11 @@ public class HypersphereCollectionRealRandomAccessible< T extends Type< T > > im
 		@Override
 		public RealRandomAccess< T > copyRealRandomAccess()
 		{
-			return new HypersphereCollectionRealRandomAccess();
+			RealRandomAccess< T > res = new HypersphereCollectionRealRandomAccess();
+			res.setPosition( this );
+			return res;
 		}
 
-	}
-
-	public static void main(String[] args)
-	{
-		final Random rnd = new Random( 42 );
-
-		long[] dim = new long[]{1024, 1024, 256};
-
-		int nBigSpheres = 400;
-		float minRadiusBig = 20;
-		float maxRadiusBig = 40;
-		float minValueBig = 1.2f;
-		float maxValueBig = 2.4f;
-
-		int nSmallSamples = 20000;
-		float minRadiusSmall = 2;
-		float maxRadiusSmall = 4;
-		float minValueSmall = 4.0f;
-		float maxValueSmall = 6.0f;
-
-
-		List<Double> bigSphereRadii = new ArrayList<>();
-		
-		RealRandomAccessible< FloatType > rrablePerlin = new PerlinNoiseRealRandomAccessible<>( new FloatType(), new double[] {dim[0]/4,dim[1]/1.5,dim[2]}, new int[] {15, 15, 15}, 100, rnd );
-		RealRandomAccessible< FloatType > rrablePerlinThrd = new SimpleCalculatedRealRandomAccessible<FloatType>( new FloatType(), (a,b) -> {
-			a.setReal( b.iterator().next().get() > 0.1 ? 1.0 : 0);
-		}, rrablePerlin);
-		
-		List< RealPoint > bigSpherePositions = PointRejectionSampling.sampleRealPoints( new FinalInterval( dim ), nBigSpheres, rrablePerlinThrd, rnd );
-		HypersphereCollectionRealRandomAccessible< FloatType > rrableDensity = new HypersphereCollectionRealRandomAccessible<>( dim.length, new FloatType() );
-		for (int i=0; i<nBigSpheres; i++)
-		{
-			double radius = minRadiusBig + rnd.nextDouble() * (maxRadiusBig - minRadiusBig);
-			rrableDensity.addSphere( 
-					bigSpherePositions.get( i ),
-					radius,
-					new FloatType(1.0f) );
-			bigSphereRadii.add( radius );
-		}
-		
-		HypersphereCollectionRealRandomAccessible< FloatType > rrableBigPoints = new HypersphereCollectionRealRandomAccessible<>( dim.length, new FloatType() );
-		HypersphereCollectionRealRandomAccessible< FloatType > rrableSmallPoints = new HypersphereCollectionRealRandomAccessible<>( dim.length, new FloatType() );
-		List< RealPoint > smallPoints = PointRejectionSampling.sampleRealPoints( new FinalInterval( dim ), nSmallSamples, rrableDensity, rnd );
-
-		for (final RealPoint sp : smallPoints)
-		{
-			rrableSmallPoints.addSphere( 
-					sp,
-					minRadiusSmall + rnd.nextDouble() * (maxRadiusSmall - minRadiusSmall),
-					new FloatType((float) ( minValueSmall + rnd.nextDouble() * (maxValueSmall - minValueSmall) )) );
-		}
-
-		for (int i=0; i<nBigSpheres; i++)
-		{
-			rrableBigPoints.addSphere( 
-					bigSpherePositions.get( i ),
-					bigSphereRadii.get( i ),
-					new FloatType((float) ( minValueBig + rnd.nextDouble() * (maxValueBig - minValueBig) )) );
-		}
-
-
-		/*
-		 * attempt at speedup, even slower :( 
-		Scale3D scalePerlin = new Scale3D( 4,4,4 );
-		IntervalView< FloatType > perlinScaled = Views.interval( Views.raster( RealViews.affineReal( rrablePerlinThrd, scalePerlin.inverse() ) ), new FinalInterval( new long[]{dim[0]/4, dim[1]/4, dim[2]/4} ));
-		AffineRealRandomAccessible< FloatType, AffineGet > perlinUpsampled = RealViews.affineReal( Views.interpolate( Views.extendZero( perlinScaled ), new NLinearInterpolatorFactory<>()), scalePerlin );
-		*/
-
-		RealRandomAccessible< FloatType > rrableFinal = new SimpleCalculatedRealRandomAccessible<FloatType>( new FloatType(), (a,b) -> {
-			float res = 0;
-			for (FloatType t: b )
-				res = Math.max( res, t.getRealFloat() );
-			a.setReal( res );
-		}, rrableBigPoints, rrableSmallPoints);
-		
-		/*
-		rrableFinal = new SimpleCalculatedRealRandomAccessible<FloatType>( new FloatType(), (a,b) -> {
-			a.setReal( b.iterator().next().get() > 50 ? 1.0 : 0);
-		}, rrableFinal);
-		
-		rrableFinal = RealViews.affineReal( rrableFinal, new Scale( 1,1,1 ) );
-		*/
-		
-		IntervalView< FloatType > view = Views.interval( Views.raster( rrableFinal ), new FinalInterval( dim ) );
-
-		new ImageJ();
-		ImageJFunctions.show( view, Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() ) );
-	
-		
 	}
 
 }

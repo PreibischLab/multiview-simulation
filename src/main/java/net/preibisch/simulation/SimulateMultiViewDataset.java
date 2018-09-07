@@ -575,6 +575,7 @@ public class SimulateMultiViewDataset
 			System.out.println( new Date( System.currentTimeMillis() ) + ": weights angle " + angle );
 			Img<FloatType> w = computeWeightImage( rot, attenuation );
 			
+			/*
 			System.out.println( new Date( System.currentTimeMillis() ) + ": convolving angle " + angle );
 			Img< FloatType > psf = Tools.open( dir + "Angle" + angle + ".tif", true );
 			Img<FloatType> con = convolve( att, psf, service );
@@ -594,9 +595,11 @@ public class SimulateMultiViewDataset
 			
 			//ImageJFunctions.show( view ).setTitle( "aligned_view_" + angle );
 			//ImageJFunctions.show( viewPSF ).setTitle( "aligned_view_psf_" + angle );
-			
+			*/
 			Tools.save( rot, dir + "rot_view_" + angle + ".tif" );
 			Tools.save( att, dir + "att_view_" + angle + ".tif" );
+			
+			/*
 			Tools.save( con, dir + "con_view_" + angle + ".tif" );
 			Tools.save( acq, dir + "acq_view_" + angle + ".tif" );
 			Tools.save( iso, dir + "iso_view_" + angle + ".tif" );
@@ -608,7 +611,7 @@ public class SimulateMultiViewDataset
 			//ImageJFunctions.show( con ).setTitle( "convolved" );
 			//ImageJFunctions.show( acq ).setTitle( "acquisition" );
 			//ImageJFunctions.show( iso ).setTitle( "isotropic" );
-			
+			*/
 			//ImageJFunctions.show( viewWeights ).duplicate().show();
 		}
 		
