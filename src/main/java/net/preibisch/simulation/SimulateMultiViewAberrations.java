@@ -42,6 +42,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.algorithm.fft2.FFTConvolution;
+import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.algorithm.gradient.HessianMatrix;
 import net.imglib2.algorithm.region.hypersphere.HyperSphere;
 import net.imglib2.algorithm.region.hypersphere.HyperSphereCursor;
@@ -58,7 +59,9 @@ import net.imglib2.outofbounds.OutOfBoundsMirrorFactory.Boundary;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.complex.ComplexFloatType;
 import net.imglib2.type.numeric.real.FloatType;
+import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
+import net.imglib2.util.ValuePair;
 import net.imglib2.view.Views;
 
 /**
@@ -371,135 +374,8 @@ public class SimulateMultiViewAberrations
 		return img;
 	}
 
-	public static void computeHessianMatrix3D( final RandomAccess< FloatType > ra, final double[][] hessianMatrix )
+	public static void drawSimpleImage( final RandomAccessibleInterval< FloatType > randomAccessible )
 	{
-		final double temp = 2 * ra.get().get();
-
-		// xx
-		//hessianMatrix[0][0] = img.get(x + 1, y, z) - temp + img.get(x - 1, y, z);
-		ra.fwd( 0 );
-		hessianMatrix[0][0] = ra.get().get();
-		hessianMatrix[0][0] -= temp;
-		ra.bck( 0 );
-		ra.bck( 0 );
-		hessianMatrix[0][0] += ra.get().get();
-		ra.fwd( 0 );
-
-		// yy
-		//hessianMatrix[1][1] = img.get(x, y + 1, z) - temp + img.get(x, y - 1, z);
-		ra.fwd( 1 );
-		hessianMatrix[1][1] = ra.get().get();
-		hessianMatrix[1][1] -= temp;
-		ra.bck( 1 );
-		ra.bck( 1 );
-		hessianMatrix[1][1] += ra.get().get();
-		ra.fwd( 1 );
-
-		// zz
-		//hessianMatrix[2][2] = img.get(x, y, z + 1) - temp + img.get(x, y, z - 1);
-		ra.fwd( 2 );
-		hessianMatrix[2][2] = ra.get().get();
-		hessianMatrix[2][2] -= temp;
-		ra.bck( 2 );
-		ra.bck( 2 );
-		hessianMatrix[2][2] += ra.get().get();
-		ra.fwd( 2 );
-
-		// xy
-		ra.fwd( 0 );
-		ra.fwd( 1 );
-		double a = ra.get().get();
-		ra.bck( 0 );
-		ra.bck( 0 );
-		double b = ra.get().get();
-		ra.fwd( 0 );
-		ra.fwd( 0 );
-		ra.bck( 1 );
-		ra.bck( 1 );
-		double c = ra.get().get();
-		ra.bck( 0 );
-		ra.bck( 0 );
-		double d = ra.get().get();
-		ra.fwd( 0 );
-		ra.fwd( 1 );
-
-		hessianMatrix[0][1] = hessianMatrix[1][0] =
-				(
-						(a - b) / 2
-						-
-						(c - d) / 2
-				) / 2;
-				/*(
-						(img.get(x + 1, y + 1, z) - img.get(x - 1, y + 1, z)) / 2
-						-
-						(img.get(x + 1, y - 1, z) - img.get(x - 1, y - 1, z)) / 2
-				) / 2;*/
-
-		// xz
-		ra.fwd( 0 );
-		ra.fwd( 2 );
-		a = ra.get().get();
-		ra.bck( 0 );
-		ra.bck( 0 );
-		b = ra.get().get();
-		ra.fwd( 0 );
-		ra.fwd( 0 );
-		ra.bck( 2 );
-		ra.bck( 2 );
-		c = ra.get().get();
-		ra.bck( 0 );
-		ra.bck( 0 );
-		d = ra.get().get();
-		ra.fwd( 0 );
-		ra.fwd( 2 );
-
-		hessianMatrix[0][2] = hessianMatrix[2][0] =
-				(
-						(a - b) / 2
-						-
-						(c - d) / 2
-				) / 2;
-				/*(
-						(img.get(x + 1, y, z + 1) - img.get(x - 1, y, z + 1)) / 2
-						-
-						(img.get(x + 1, y, z - 1) - img.get(x - 1, y, z - 1)) / 2
-				) / 2;*/
-
-		// yz
-		ra.fwd( 1 );
-		ra.fwd( 2 );
-		a = ra.get().get();
-		ra.bck( 1 );
-		ra.bck( 1 );
-		b = ra.get().get();
-		ra.fwd( 1 );
-		ra.fwd( 1 );
-		ra.bck( 2 );
-		ra.bck( 2 );
-		c = ra.get().get();
-		ra.bck( 1 );
-		ra.bck( 1 );
-		d = ra.get().get();
-		ra.fwd( 1 );
-		ra.fwd( 2 );
-
-		hessianMatrix[1][2] = hessianMatrix[2][1] =
-				(
-						(a - b) / 2
-						-
-						(c - d) / 2
-				) / 2;
-				/*(
-						(img.get(x, y + 1, z + 1) - img.get(x, y - 1, z + 1)) / 2
-						-
-						(img.get(x, y + 1, z - 1) - img.get(x, y - 1, z - 1)) / 2
-				) / 2;*/
-	}
-
-	public static Img< FloatType > curvatures3d( final RandomAccessibleInterval< FloatType > randomAccessible )
-	{
-		final int n = randomAccessible.numDimensions();
-
 		final Cursor< FloatType > c = Views.iterable( randomAccessible ).localizingCursor();
 
 		while( c.hasNext() )
@@ -510,183 +386,123 @@ public class SimulateMultiViewAberrations
 			//	if ( c.getIntPosition( d ) > 100 || c.getIntPosition( d ) < 10 )
 			//		all = false;
 
-			if ( c.getIntPosition( 0 ) > c.getIntPosition( 1 ) )//&&  c.getIntPosition( 0 ) + c.getIntPosition( 1 ) > c.getIntPosition( 2 ) )
-				all = true;
+			if ( c.getIntPosition( 0 ) < randomAccessible.dimension( 0 ) / 2 )
+			{
+				if ( c.getIntPosition( 0 ) > c.getIntPosition( 1 ) )
+					all = true;
+				else
+					all = false;
+			}
 			else
-				all = false;
+			{
+				if ( randomAccessible.dimension( 0 ) - c.getIntPosition( 0 ) > c.getIntPosition( 1 ) )
+					all = true;
+				else
+					all = false;
+			}
 
 			if ( all )
 				c.get().set( 1 );
 			else
 				c.get().set( 0 );
 		}
-
-		final long[] dim = new long[ n ];
-		randomAccessible.dimensions( dim );
-
-		final double[] sigma = new double[ n ];
-		final long[] dimGradient = new long[ n + 1 ];
-		final long[] dimHessian = new long[ n + 1 ];
-
-		for ( int d = 0; d < n; ++d )
-		{
-			dimGradient[ d ] = dimHessian[ d ] = dim[ d ];
-			sigma[ d ] = 0;
-		}
-
-		dimGradient[ n ] = n; //3
-		dimHessian[ n ] = ( n * ( n + 1 ) / 2 ); //6
-
-		final Img< FloatType > gaussian = new ArrayImgFactory<>( new FloatType() ).create( dim );
-		final Img< FloatType > gradient = new ArrayImgFactory<>( new FloatType() ).create( dimGradient );
-		final Img< FloatType > eigenv = new ArrayImgFactory<>( new FloatType() ).create( dimGradient );
-
-		// [m11, m12, ..., ..., m1n,
-		//       m22, m23, ..., m2n,
-		//            m33, ..., m3n
-		// ...
-		//                      mnn]
-		final Img< FloatType > hessian = new ArrayImgFactory<>( new FloatType() ).create( dimHessian );
-
-		HessianMatrix.calculateMatrix(
-				Views.extendMirrorSingle( randomAccessible ),
-				gaussian,
-				gradient,
-				hessian,
-				new OutOfBoundsMirrorFactory<>( Boundary.SINGLE ),
-				sigma );
-
-		ImageJFunctions.show( gaussian );
-
-		final double[][] matrix = new double[ 3 ][ 3 ]; // row, column
-
-		final Cursor< FloatType > cursor = Views.iterable( randomAccessible ).localizingCursor();
-		//final RandomAccess< FloatType > raHess = hessian.randomAccess();
-		final RandomAccess< FloatType > raEigen = eigenv.randomAccess();
-		final long[] posN = new long[ hessian.numDimensions() ];
-
-		final RandomAccess< FloatType > ra = Views.extendMirrorSingle( randomAccessible ).randomAccess();
-
-		while ( cursor.hasNext() )
-		{
-			cursor.fwd();
-			cursor.localize( posN );
-			posN[ n ] = 0; // n+1 dim
-
-			/*raHess.setPosition( posN );
-
-			// fill hessian matrix
-			matrix[ 0 ][ 0 ] = raHess.get().get();
-
-			raHess.fwd( n );
-			matrix[ 0 ][ 1 ] = matrix[ 1 ][ 0 ] = raHess.get().get();
-
-			raHess.fwd( n );
-			matrix[ 0 ][ 2 ] = matrix[ 2 ][ 0 ] =raHess.get().get();
-
-			raHess.fwd( n );
-			matrix[ 1 ][ 1 ] = raHess.get().get();
-
-			raHess.fwd( n );
-			matrix[ 1 ][ 2 ] = matrix[ 2 ][ 1 ] =raHess.get().get();
-
-			raHess.fwd( n );
-			matrix[ 2 ][ 2 ] = raHess.get().get();*/
-
-			ra.setPosition( cursor );
-			computeHessianMatrix3D( ra, matrix );
-
-			final Matrix m = new Matrix( matrix );
-			final EigenvalueDecomposition E = new EigenvalueDecomposition( m );
-
-			double[] result = E.getImagEigenvalues();
-
-			boolean found = false;
-
-			for (int i = 0; i < result.length; i++)
-				if (result[i] > 0)
-					found = true;
-
-			if ( !found )
-			{
-				final double[] ev = E.getRealEigenvalues();
-				
-				if ( cursor.getIntPosition( 0 ) == 50 && ( cursor.getIntPosition( 1 ) == 9 || cursor.getIntPosition( 1 ) == 10 ) && cursor.getIntPosition( 2 ) == 33 || 
-						cursor.getIntPosition( 1 ) == 50 && ( cursor.getIntPosition( 0 ) == 100 || cursor.getIntPosition( 0 ) == 101 ) && cursor.getIntPosition( 2 ) == 33)
-				//if ( cursor.getIntPosition( 0 ) == 128 && cursor.getIntPosition( 1 ) == 37 && cursor.getIntPosition( 2 ) == 165 )
-				{
-					System.out.println( cursor.getIntPosition( 0 ) + " " + cursor.getIntPosition( 1 )+ " " + cursor.getIntPosition( 2 ) + " " + cursor.get().get() );
-					System.out.println( Util.printCoordinates( ev ) );
-					final Matrix evec = E.getV();
-					System.out.println( Util.printCoordinates( evec.getColumnPackedCopy() ) + "\n");
-				}
-
-				raEigen.setPosition( posN );
-				raEigen.get().set( (float)ev[ 0 ] );
-
-				raEigen.fwd( n );
-				raEigen.get().set( (float)ev[ 1 ] );
-
-				raEigen.fwd( n );
-				raEigen.get().set( (float)ev[ 2 ] );
-			}
-			else
-			{
-				System.out.println( "found" );
-			}
-		}
-
-		return eigenv;
 	}
 
-	/*
-	public static Img< FloatType > refract3d( final RandomAccessibleInterval< FloatType > randomAccessible )
+	public static Img< FloatType > refract3dPrecompute(
+			final RandomAccessibleInterval< FloatType > randomAccessible,
+			final RandomAccessibleInterval< FloatType > eigenVal,
+			final RandomAccessibleInterval< FloatType > eigenVec )
 	{
-		// the attenuated image
-		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( randomAccessible, new FloatType() );
+		// the refracted image
+		final Img< FloatType > img = new ArrayImgFactory< FloatType >( new FloatType() ).create( randomAccessible );
 		
 		// make a plane that only contains x & z, this is the origin for the attenuation along y
 		final RandomAccessibleInterval< FloatType > startMatrix = Views.hyperSlice( randomAccessible, 1, 0 );
 		final Cursor< FloatType > c = Views.iterable( startMatrix ).localizingCursor();
 		
 		final RandomAccess< FloatType > rIn = randomAccessible.randomAccess();
+		final RandomAccess< FloatType > rVec = eigenVec.randomAccess();
+		final RandomAccess< FloatType > rVal = eigenVal.randomAccess();
 		final RandomAccess< FloatType > rOut = img.randomAccess();
 		final int[] l = new int[ 3 ];
-		
+
 		while ( c.hasNext() )
 		{
 			c.fwd();
-			
+
 			l[ 0 ] = c.getIntPosition( 0 );
 			l[ 1 ] = (int)randomAccessible.dimension( 1 ) - 1;
 			l[ 2 ] = c.getIntPosition( 1 );
 			
+			if ( l[ 2 ] != 33 )
+				continue;
+
+			if ( l[ 0 ] % 13 != 0 )
+				continue;
+
 			rIn.setPosition( l );
 			rOut.setPosition( l );
-			
-			// light intensity goes down from 1...0 depending on the image intensities
-			double n = 1;
-			
-			for ( int y = 0; y < randomAccessible.dimension( 0 ); ++y )
+			rVal.setPosition( l );
+
+			// eigenVector
+			rVec.setPosition( l[ 0 ], 0 );
+			rVec.setPosition( l[ 1 ], 1 );
+			rVec.setPosition( l[ 2 ], 2 );
+			rVec.setPosition( 0, 3 );
+
+			double vNext;
+
+			for ( int y = 1; y < randomAccessible.dimension( 0 ); ++y )
 			{
+				// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
+				double nx = rVec.get().get();
+				rVec.fwd( 3 );
+				double ny = rVec.get().get();
+				rVec.fwd( 3 );
+				double nz = rVec.get().get();
+
+				double ev = rVal.get().get();
+
+				// current direction of the ray
+				final double bx = 0;
+				final double by = 1;
+				final double bz = 0;
+
+				double dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
+
+				if ( dotP >= Math.PI / 2 )
+				{
+					// invert normal vector & eigenvalue
+					nx *= -1;
+					ny *= -1;
+					nz *= -1;
+					ev *= -1;
+
+					// adjust angle
+					dotP -= Math.PI / 2;
+					//dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
+				}
+
+				if ( Math.abs( ev ) > 0.01 )
+				{
+					// set attenuated intensity
+					rOut.get().set( (float)Math.toDegrees( dotP ) );
+				}
+
+				// TODO: update ray position
+
 				final double v = rIn.get().get();
-				
-				// probability that light is absorbed at this point
-				final double phiN = v * delta * n;
-				
-				// n is >=0
-				n = Math.max( n - phiN, 0 );
-				
-				// set attenuated intensity
-				rOut.get().set( (float) ( v * n ) );
-				
+
 				rIn.bck( 1 );
 				rOut.bck( 1 );
+				rVal.bck( 1 );
+				rVec.bck( 1 );
+				rVec.setPosition( 0, 3 );
 			}
 		}
-		
+
 		return img;
-	}*/
+	}
 
 	public static Img< FloatType > simulate()
 	{
@@ -895,15 +711,19 @@ public class SimulateMultiViewAberrations
 			Img<FloatType> rot = rotateAroundAxis( rendered, 0, angle + angleOffset );
 
 			System.out.println( new Date( System.currentTimeMillis() ) + ": refracting angle " + angle );
-			Img<FloatType> refr = curvatures3d( rot );
-			ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );;
-			ImageJFunctions.show( refr ).setDisplayRange( 0, 1 );;
+
+			drawSimpleImage( rot );
+			Pair< Img< FloatType >, Img< FloatType > > eigen = Hessian.largestEigenVector( rot );
+			Img<FloatType> refr = refract3dPrecompute( rot, eigen.getA(), eigen.getB() );
+			
+			ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );
+			ImageJFunctions.show( eigen.getA() ).setDisplayRange( -1, 1 );
+			ImageJFunctions.show( eigen.getB() ).setDisplayRange( -1, 1 );
+			ImageJFunctions.show( refr ).setDisplayRange( 0, 90 );
 			SimpleMultiThreading.threadHaltUnClean();
 
 			System.out.println( new Date( System.currentTimeMillis() ) + ": attenuation angle " + angle );
 			Img<FloatType> att = attenuate3d( rot, attenuation );
-			
-			
 
 			System.out.println( new Date( System.currentTimeMillis() ) + ": weights angle " + angle );
 			Img<FloatType> w = computeWeightImage( rot, attenuation );
