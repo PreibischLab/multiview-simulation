@@ -408,10 +408,7 @@ public class SimulateMultiViewAberrations
 		}
 	}
 
-	public static Img< FloatType > refract3dPrecompute(
-			final RandomAccessibleInterval< FloatType > randomAccessible,
-			final RandomAccessibleInterval< FloatType > eigenVal,
-			final RandomAccessibleInterval< FloatType > eigenVec )
+	public static Img< FloatType > refract3d( final RandomAccessibleInterval< FloatType > randomAccessible )
 	{
 		// the refracted image
 		final Img< FloatType > img = new ArrayImgFactory< FloatType >( new FloatType() ).create( randomAccessible );
@@ -420,11 +417,12 @@ public class SimulateMultiViewAberrations
 		final RandomAccessibleInterval< FloatType > startMatrix = Views.hyperSlice( randomAccessible, 1, 0 );
 		final Cursor< FloatType > c = Views.iterable( startMatrix ).localizingCursor();
 		
-		final RandomAccess< FloatType > rIn = randomAccessible.randomAccess();
-		final RandomAccess< FloatType > rVec = eigenVec.randomAccess();
-		final RandomAccess< FloatType > rVal = eigenVal.randomAccess();
+		final RandomAccess< FloatType > rIn = Views.extendMirrorSingle( randomAccessible ).randomAccess();
 		final RandomAccess< FloatType > rOut = img.randomAccess();
 		final int[] l = new int[ 3 ];
+
+		final double[][] matrix = new double[ 3 ][ 3 ]; // row, column
+		final double[] eigenVector = new double[ 3 ];
 
 		while ( c.hasNext() )
 		{
@@ -433,35 +431,26 @@ public class SimulateMultiViewAberrations
 			l[ 0 ] = c.getIntPosition( 0 );
 			l[ 1 ] = (int)randomAccessible.dimension( 1 ) - 1;
 			l[ 2 ] = c.getIntPosition( 1 );
-			
-			if ( l[ 2 ] != 33 )
-				continue;
 
 			if ( l[ 0 ] % 13 != 0 )
 				continue;
 
 			rIn.setPosition( l );
 			rOut.setPosition( l );
-			rVal.setPosition( l );
-
-			// eigenVector
-			rVec.setPosition( l[ 0 ], 0 );
-			rVec.setPosition( l[ 1 ], 1 );
-			rVec.setPosition( l[ 2 ], 2 );
-			rVec.setPosition( 0, 3 );
 
 			double vNext;
 
 			for ( int y = 1; y < randomAccessible.dimension( 0 ); ++y )
 			{
 				// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
-				double nx = rVec.get().get();
-				rVec.fwd( 3 );
-				double ny = rVec.get().get();
-				rVec.fwd( 3 );
-				double nz = rVec.get().get();
 
-				double ev = rVal.get().get();
+				Hessian.computeHessianMatrix3D( rIn, matrix );
+
+				double ev = Hessian.computeLargestEigenVectorAndValue3d( matrix, eigenVector );
+
+				double nx = eigenVector[ 0 ];
+				double ny = eigenVector[ 1 ];
+				double nz = eigenVector[ 2 ];
 
 				// current direction of the ray
 				final double bx = 0;
@@ -495,9 +484,6 @@ public class SimulateMultiViewAberrations
 
 				rIn.bck( 1 );
 				rOut.bck( 1 );
-				rVal.bck( 1 );
-				rVec.bck( 1 );
-				rVec.setPosition( 0, 3 );
 			}
 		}
 
@@ -694,12 +680,12 @@ public class SimulateMultiViewAberrations
 		System.out.println( new Date( System.currentTimeMillis() ) + ": rendering basis for ground truth" );
 		final Img<FloatType> rendered = simulate();
 
-		System.out.println( new Date( System.currentTimeMillis() ) + ": computing ground truth" );
-		final Img<FloatType> obj = rotateAroundAxis( rendered, 0, angleOffset );
-		
-		Tools.save( rendered, dir + "rendered.tif" );
-		Tools.save( obj, dir + "groundtruth.tif" );
-		
+		//System.out.println( new Date( System.currentTimeMillis() ) + ": computing ground truth" );
+		//final Img<FloatType> obj = rotateAroundAxis( rendered, 0, angleOffset );
+
+		//Tools.save( rendered, dir + "rendered.tif" );
+		//Tools.save( obj, dir + "groundtruth.tif" );
+
 		final ArrayList< Img< FloatType > > weights = new ArrayList< Img< FloatType > >();
 		
 		//ImageJFunctions.show( rendered ).setTitle( "rendered" );
@@ -714,7 +700,7 @@ public class SimulateMultiViewAberrations
 
 			drawSimpleImage( rot );
 			Pair< Img< FloatType >, Img< FloatType > > eigen = Hessian.largestEigenVector( rot );
-			Img<FloatType> refr = refract3dPrecompute( rot, eigen.getA(), eigen.getB() );
+			Img<FloatType> refr = refract3d( rot );
 			
 			ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );
 			ImageJFunctions.show( eigen.getA() ).setDisplayRange( -1, 1 );
