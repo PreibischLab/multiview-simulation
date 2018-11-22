@@ -408,43 +408,75 @@ public class SimulateMultiViewAberrations
 		}
 	}
 
+	private static final boolean inside( final double[] rayPosition, final Interval interval )
+	{
+		for ( int d = 0; d < rayPosition.length; ++d )
+			if ( rayPosition[ d ] < interval.min( d ) || rayPosition[ d ] > interval.max( d ) )
+				return false;
+
+		return true;
+	}
+
 	public static Img< FloatType > refract3d( final RandomAccessibleInterval< FloatType > randomAccessible )
 	{
 		// the refracted image
 		final Img< FloatType > img = new ArrayImgFactory< FloatType >( new FloatType() ).create( randomAccessible );
+		final Img< FloatType > weight = new ArrayImgFactory< FloatType >( new FloatType() ).create( randomAccessible );
 		
 		// make a plane that only contains x & z, this is the origin for the attenuation along y
 		final RandomAccessibleInterval< FloatType > startMatrix = Views.hyperSlice( randomAccessible, 1, 0 );
 		final Cursor< FloatType > c = Views.iterable( startMatrix ).localizingCursor();
-		
-		final RandomAccess< FloatType > rIn = Views.extendMirrorSingle( randomAccessible ).randomAccess();
-		final RandomAccess< FloatType > rOut = img.randomAccess();
-		final int[] l = new int[ 3 ];
 
+		//final RandomAccess< FloatType > rIn = Views.extendMirrorSingle( randomAccessible ).randomAccess();
+		final RandomAccess< FloatType > rOut = img.randomAccess();
+		final long[] intPos = new long[ 3 ];
+
+		final RealRandomAccess< FloatType > rrIn = Views.interpolate( Views.extendMirrorSingle( randomAccessible ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
+		
 		final double[][] matrix = new double[ 3 ][ 3 ]; // row, column
 		final double[] eigenVector = new double[ 3 ];
 
+		final double[] sigma = new double[] { 0.5, 0.5, 0.5 };
+		final VolumeInjection inject = new VolumeInjection( img, weight, sigma );
+
+		System.out.println( "sum weights = " + inject.getSumWeights() );
+		System.out.println( "num pixels = " + inject.getNumPixels() );
+
+		// the last direction of the light, might be changed
+		final double[] rayVector = new double[ 3 ];
+
+		// the current position of the ray
+		final double[] rayPosition = new double[ 3 ];
+
+		// for each point on the xz plane at y=0
 		while ( c.hasNext() )
 		{
 			c.fwd();
 
-			l[ 0 ] = c.getIntPosition( 0 );
-			l[ 1 ] = (int)randomAccessible.dimension( 1 ) - 1;
-			l[ 2 ] = c.getIntPosition( 1 );
+			rayPosition[ 0 ] = c.getIntPosition( 0 );
+			rayPosition[ 1 ] = (int)randomAccessible.dimension( 1 ) - 1; // start at a half pixel offset so less interpolation is necessary
+			rayPosition[ 2 ] = c.getIntPosition( 1 );
 
-			if ( l[ 0 ] % 13 != 0 )
+			rayVector[ 0 ] = 0;
+			rayVector[ 1 ] = -1;
+			rayVector[ 2 ] = 0;
+
+			//if ( rayPosition[ 0 ] % 13 != 0 )
+			//	continue;
+
+			if ( rayPosition[ 0 ] != 60 )
 				continue;
 
-			rIn.setPosition( l );
-			rOut.setPosition( l );
+			if ( rayPosition[ 2 ] != 33 )
+				continue;
 
-			double vNext;
-
-			for ( int y = 1; y < randomAccessible.dimension( 0 ); ++y )
+			//for ( int y = 1; y < randomAccessible.dimension( 0 ); ++y )
+			while ( inside( rayPosition, randomAccessible ) )
 			{
-				// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
+				rrIn.setPosition( rayPosition );
 
-				Hessian.computeHessianMatrix3D( rIn, matrix );
+				// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
+				Hessian.computeHessianMatrix3D( rrIn, matrix );
 
 				double ev = Hessian.computeLargestEigenVectorAndValue3d( matrix, eigenVector );
 
@@ -453,9 +485,9 @@ public class SimulateMultiViewAberrations
 				double nz = eigenVector[ 2 ];
 
 				// current direction of the ray
-				final double bx = 0;
-				final double by = 1;
-				final double bz = 0;
+				final double bx = rayVector[ 0 ];
+				final double by = rayVector[ 1 ];
+				final double bz = rayVector[ 2 ];
 
 				double dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
 
@@ -472,20 +504,28 @@ public class SimulateMultiViewAberrations
 					//dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
 				}
 
+				//System.out.println( Util.printCoordinates( rayPosition ) + " " + ev + " " + Math.toDegrees( dotP ) );
+
 				if ( Math.abs( ev ) > 0.01 )
 				{
-					// set attenuated intensity
+					// place a gaussian sphere
+					//inject.addNormalizedGaussian( Math.toDegrees( dotP ), rayPosition );
+
+					// set a nearest-neighbor pixel
+					intPos[ 0 ] = Math.round( rayPosition[ 0 ] );
+					intPos[ 1 ] = Math.round( rayPosition[ 1 ] );
+					intPos[ 2 ] = Math.round( rayPosition[ 2 ] );
+					rOut.setPosition( intPos );
 					rOut.get().set( (float)Math.toDegrees( dotP ) );
 				}
 
-				// TODO: update ray position
-
-				final double v = rIn.get().get();
-
-				rIn.bck( 1 );
-				rOut.bck( 1 );
+				rayPosition[ 0 ] += rayVector[ 0 ];
+				rayPosition[ 1 ] += rayVector[ 1 ];
+				rayPosition[ 2 ] += rayVector[ 2 ];
 			}
 		}
+
+		inject.normalize();
 
 		return img;
 	}
