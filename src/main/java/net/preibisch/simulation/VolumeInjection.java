@@ -34,14 +34,22 @@ public class VolumeInjection
 
 		for ( int d = 0; d < numDimensions; ++d )
 		{
-			size[ d ] = Util.getSuggestedKernelDiameter( sigma[ d ] ) * 2;
-			two_sq_sigma[ d ] = 2 * sigma[ d ] * sigma[ d ];
+			if ( sigma[ d ] == 0 )
+			{
+				size[ d ] = 1;
+				two_sq_sigma[ d ] = 1;
+			}
+			else
+			{
+				size[ d ] = Util.getSuggestedKernelDiameter( sigma[ d ] ) * 2;
+				two_sq_sigma[ d ] = 2 * sigma[ d ] * sigma[ d ];
+			}
 		}
 
 		double sumWeights = 0;
 		int numPixels = 0;
 
-		final Cursor< FloatType > cursor = getCursor( new double[] { 0.5, 0.5, 0.5 } );
+		final Cursor< FloatType > cursor = getCursor( new double[] { 0.0, 0.0, 0.0 } );
 
 		while ( cursor.hasNext() )
 		{
@@ -59,6 +67,8 @@ public class VolumeInjection
 		this.sumWeights = sumWeights;
 		this.numPixels = numPixels;
 	}
+
+	public int[] getSize() { return size; }
 
 	public void normalize()
 	{
