@@ -50,6 +50,7 @@ import net.imglib2.exception.IncompatibleTypeException;
 import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
+import net.imglib2.img.array.ArrayImgs;
 import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
@@ -417,6 +418,59 @@ public class SimulateMultiViewAberrations
 		return true;
 	}
 
+	public static double refract( final double[] i, final double[] n, final double n0, final double n1, final double thetaI, final double[] t )
+	{
+		final double deltaN = n0 / n1;
+		final double thetaT = Math.asin( deltaN * Math.sin( thetaI ) );
+
+		// total internal reflection
+		if ( Double.isNaN( thetaT ) )
+			return thetaT;
+
+		final double cosThetaI = Math.cos( thetaI );
+		final double sinThetaT = Math.sin( thetaT );
+
+		t[ 0 ] = deltaN * i[ 0 ] - n[ 0 ] * ( deltaN * cosThetaI - Math.sqrt( 1 - sinThetaT*sinThetaT ));
+		t[ 1 ] = deltaN * i[ 1 ] - n[ 1 ] * ( deltaN * cosThetaI - Math.sqrt( 1 - sinThetaT*sinThetaT ));
+		t[ 2 ] = deltaN * i[ 2 ] - n[ 2 ] * ( deltaN * cosThetaI - Math.sqrt( 1 - sinThetaT*sinThetaT ));
+
+		return thetaT;
+	}
+
+	public static double length( final double[] v )
+	{
+		return Math.sqrt( v[0]*v[0] + v[1]*v[1] + v[2]*v[2] );
+	}
+
+	public static void norm( final double[] v )
+	{
+		final double l = length( v );
+
+		v[ 0 ] /= l;
+		v[ 1 ] /= l;
+		v[ 2 ] /= l;
+	}
+
+	public static double incidentAngle( final double[] i, final double[] n )
+	{
+		double thetaI = Math.acos( ( n[0]*i[0] + n[1]*i[1] + n[2]*i[2]) / ( Math.sqrt( n[0]*n[0] + n[1]*n[1] + n[2]*n[2] ) * Math.sqrt( i[0]*i[0] + i[1]*i[1] + i[2]*i[2] ) ) );
+
+		if ( thetaI >= Math.PI / 2 )
+		{
+			// invert normal vector & eigenvalue
+			n[ 0 ] *= -1;
+			n[ 1 ] *= -1;
+			n[ 2 ] *= -1;
+			//ev *= -1;
+
+			// adjust angle
+			thetaI -= Math.PI / 2;
+			//dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
+		}
+
+		return thetaI;
+	}
+
 	public static Img< FloatType > refract3d( final RandomAccessibleInterval< FloatType > randomAccessible )
 	{
 		// the refracted image
@@ -427,26 +481,33 @@ public class SimulateMultiViewAberrations
 		final RandomAccessibleInterval< FloatType > startMatrix = Views.hyperSlice( randomAccessible, 1, 0 );
 		final Cursor< FloatType > c = Views.iterable( startMatrix ).localizingCursor();
 
-		//final RandomAccess< FloatType > rIn = Views.extendMirrorSingle( randomAccessible ).randomAccess();
-		final RandomAccess< FloatType > rOut = img.randomAccess();
-		final long[] intPos = new long[ 3 ];
+		//final RandomAccess< FloatType > rOut = img.randomAccess();
+		//final long[] intPos = new long[ 3 ];
 
 		final RealRandomAccess< FloatType > rrIn = Views.interpolate( Views.extendMirrorSingle( randomAccessible ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
 		
 		final double[][] matrix = new double[ 3 ][ 3 ]; // row, column
 		final double[] eigenVector = new double[ 3 ];
 
-		final double[] sigma = new double[] { 0.5, 0.5, 0.5 };
+		final double[] sigma = new double[] { 0.5, 0.5, 0.0 };
 		final VolumeInjection inject = new VolumeInjection( img, weight, sigma );
 
 		System.out.println( "sum weights = " + inject.getSumWeights() );
 		System.out.println( "num pixels = " + inject.getNumPixels() );
 
-		// the last direction of the light, might be changed
+		// the incoming direction of the light
 		final double[] rayVector = new double[ 3 ];
+
+		// the outgoing, refracted direction of the light
+		final double[] refractedRay = new double[ 3 ];
 
 		// the current position of the ray
 		final double[] rayPosition = new double[ 3 ];
+
+		final double nA = 1.0; // air (intensity == 0)
+		final double nB = 1.33; // water (intensity == 1)
+
+		System.out.println( "starting..." );
 
 		// for each point on the xz plane at y=0
 		while ( c.hasNext() )
@@ -464,8 +525,8 @@ public class SimulateMultiViewAberrations
 			//if ( rayPosition[ 0 ] % 13 != 0 )
 			//	continue;
 
-			if ( rayPosition[ 0 ] != 60 )
-				continue;
+			//if ( rayPosition[ 0 ] != 60 )
+			//	continue;
 
 			if ( rayPosition[ 2 ] != 33 )
 				continue;
@@ -474,50 +535,81 @@ public class SimulateMultiViewAberrations
 			while ( inside( rayPosition, randomAccessible ) )
 			{
 				rrIn.setPosition( rayPosition );
+				final float value = rrIn.get().get();
 
 				// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
 				Hessian.computeHessianMatrix3D( rrIn, matrix );
 
 				double ev = Hessian.computeLargestEigenVectorAndValue3d( matrix, eigenVector );
 
-				double nx = eigenVector[ 0 ];
-				double ny = eigenVector[ 1 ];
-				double nz = eigenVector[ 2 ];
-
-				// current direction of the ray
-				final double bx = rayVector[ 0 ];
-				final double by = rayVector[ 1 ];
-				final double bz = rayVector[ 2 ];
-
-				double dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
-
-				if ( dotP >= Math.PI / 2 )
-				{
-					// invert normal vector & eigenvalue
-					nx *= -1;
-					ny *= -1;
-					nz *= -1;
-					ev *= -1;
-
-					// adjust angle
-					dotP -= Math.PI / 2;
-					//dotP = Math.acos( ( nx*bx + ny*by + nz*bz) / ( Math.sqrt( nx*nx + ny*ny + nz*nz ) * Math.sqrt( bx*bx + by*by + bz*bz ) ) );
-				}
-
-				//System.out.println( Util.printCoordinates( rayPosition ) + " " + ev + " " + Math.toDegrees( dotP ) );
-
 				if ( Math.abs( ev ) > 0.01 )
 				{
+					// compute refractive index change
+					rrIn.setPosition( rayPosition );
+
+					rrIn.move( -rayVector[ 0 ], 0 );
+					rrIn.move( -rayVector[ 1 ], 1 );
+					rrIn.move( -rayVector[ 2 ], 2 );
+
+					// intensity at the origin of the ray
+					final double i0 = rrIn.get().get();
+
+					rrIn.move( 2*rayVector[ 0 ], 0 );
+					rrIn.move( 2*rayVector[ 1 ], 1 );
+					rrIn.move( 2*rayVector[ 2 ], 2 );
+
+					// intensity at the projected location of the ray
+					final double i1 = rrIn.get().get();
+
+					final double n0 = ( nB - nA ) * i0 + nA;
+					final double n1 = ( nB - nA ) * i1 + nA;
+
+					final double thetaI = incidentAngle( rayVector, eigenVector );
+					final double thetaT = refract( rayVector, eigenVector, n0, n1, thetaI, refractedRay );
+
+					// total reflection, stop that ray here since this is more of a theoretical issue
+					if ( Double.isNaN( thetaT ) )
+						break;
+
+					norm( refractedRay );
+
+					/*
+					System.out.println( Util.printCoordinates( rayPosition ) + ", v: " + Util.printCoordinates( rayVector ) );
+					System.out.println( i0 + " >>> " + i1 );
+					System.out.println( n0 + " >>> " + n1 );
+					System.out.println( "eigval: " + ev + " angleIn: " + Math.toDegrees( thetaI ) + " angleOut: " + Math.toDegrees( thetaT ) );
+					System.out.println( "n: " + Util.printCoordinates( eigenVector ) + " " + length( eigenVector ) );
+					System.out.println( "i: " + Util.printCoordinates( rayVector ) + " " + length( rayVector ));
+					System.out.println( "t: " + Util.printCoordinates( refractedRay ) + " " + length( refractedRay ));
+					System.out.println();
+					*/
+
+					// update the ray vector
+					rayVector[ 0 ] = refractedRay[ 0 ];
+					rayVector[ 1 ] = refractedRay[ 1 ];
+					rayVector[ 2 ] = refractedRay[ 2 ];
+
 					// place a gaussian sphere
 					//inject.addNormalizedGaussian( Math.toDegrees( dotP ), rayPosition );
 
+					/*
 					// set a nearest-neighbor pixel
 					intPos[ 0 ] = Math.round( rayPosition[ 0 ] );
 					intPos[ 1 ] = Math.round( rayPosition[ 1 ] );
 					intPos[ 2 ] = Math.round( rayPosition[ 2 ] );
 					rOut.setPosition( intPos );
-					rOut.get().set( (float)Math.toDegrees( dotP ) );
+					rOut.get().set( (float)Math.toDegrees( thetaI ) );*/
 				}
+
+				// place a gaussian sphere
+				inject.addNormalizedGaussian( value, rayPosition );
+
+				/*intPos[ 0 ] = Math.round( rayPosition[ 0 ] );
+				intPos[ 1 ] = Math.round( rayPosition[ 1 ] );
+				intPos[ 2 ] = Math.round( rayPosition[ 2 ] );
+				rOut.setPosition( intPos );
+				rOut.get().set( value );*/
+
 
 				rayPosition[ 0 ] += rayVector[ 0 ];
 				rayPosition[ 1 ] += rayVector[ 1 ];
@@ -687,9 +779,38 @@ public class SimulateMultiViewAberrations
                     IJ.showProgress( ++i, size );
             }
     }
-
+ 
 	public static void main( String[] args )
 	{
+		final double[] i = new double[] { 0, -1, 0 };
+		final double[] n = new double[] { 0.7071067811865475,-0.7071067811865475,-0.0 }; // 45
+		//final double[] n = new double[] { 0.642824346533225,-0.766013615743305,-0.0 }; // 40.00274776305653
+		final double[] t = new double[ 3 ];
+
+		// 1.0 > 1.2: 45 > 36.10420471349619
+		// 1.0 > 1.1: 45 > 40.00274776305653
+		// 1.1 > 1.2: 40.00274776305653 > 36.10420471349619
+		final double n0 = 1.1;
+		final double n1 = 1.2;
+
+		final double thetaI = incidentAngle( i, n );
+		final double thetaT = refract( i, n, n0, n1, thetaI, t );
+
+		System.out.println( Math.toDegrees( thetaI ) + " >> " + Math.toDegrees( thetaT ) );
+		System.out.println( Util.printCoordinates( i ) );
+		System.out.println( Util.printCoordinates( n ) );
+		System.out.println( Util.printCoordinates( t ) );
+
+		/*
+		final double[] sigma = new double[] { 0.5, 0.5, 0.0 };
+		final VolumeInjection inject = new VolumeInjection( ArrayImgs.floats( 256, 256, 256 ), ArrayImgs.floats( 256, 256, 256 ), sigma );
+
+		System.out.println( "sum weights = " + inject.getSumWeights() );
+		System.out.println( "num pixels = " + inject.getNumPixels() );
+		System.out.println( "size = " + Util.printCoordinates( inject.getSize() ) );
+		*/
+		//System.exit( 0 );
+
 		final String dir = "src/main/resources/";
 		final ExecutorService service = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
 
@@ -745,7 +866,7 @@ public class SimulateMultiViewAberrations
 			ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );
 			ImageJFunctions.show( eigen.getA() ).setDisplayRange( -1, 1 );
 			ImageJFunctions.show( eigen.getB() ).setDisplayRange( -1, 1 );
-			ImageJFunctions.show( refr ).setDisplayRange( 0, 90 );
+			ImageJFunctions.show( refr ).setDisplayRange( 0, 1 );
 			SimpleMultiThreading.threadHaltUnClean();
 
 			System.out.println( new Date( System.currentTimeMillis() ) + ": attenuation angle " + angle );
@@ -818,10 +939,10 @@ public class SimulateMultiViewAberrations
 			}
 		}
 		
-		for ( int i = 0; i < weights.size(); ++i )
+		for ( int j = 0; j < weights.size(); ++j )
 		{
-			final int angle = i * angleIncrement;
-			Tools.save( weights.get( i ), dir + "aligned_view_weights" + angle + ".tif" );	
+			final int angle = j * angleIncrement;
+			Tools.save( weights.get( j ), dir + "aligned_view_weights" + angle + ".tif" );	
 		}
 		
 		final Img< FloatType > sumWeights = weights.get( 0 ).factory().create( weights.get( 0 ), weights.get( 0 ).firstElement() );
