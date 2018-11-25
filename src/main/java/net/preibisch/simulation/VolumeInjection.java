@@ -4,6 +4,9 @@ import net.imglib2.Cursor;
 import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
+import net.imglib2.img.Img;
+import net.imglib2.img.array.ArrayImgs;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
@@ -41,7 +44,7 @@ public class VolumeInjection
 			}
 			else
 			{
-				size[ d ] = Util.getSuggestedKernelDiameter( sigma[ d ] ) * 2;
+				size[ d ] = Util.getSuggestedKernelDiameter( sigma[ d ] ) * 3 / 2;
 				two_sq_sigma[ d ] = 2 * sigma[ d ] * sigma[ d ];
 			}
 		}
@@ -72,6 +75,9 @@ public class VolumeInjection
 
 	public void normalize()
 	{
+		ImageJFunctions.wrapFloat( image, "img" ).duplicate().show();
+		ImageJFunctions.wrapFloat( weight, "weight" ).duplicate().show();
+
 		final Cursor< FloatType > c = Views.iterable( image ).localizingCursor();
 		final RandomAccess< FloatType > r = weight.randomAccess();
 
@@ -82,7 +88,7 @@ public class VolumeInjection
 
 			final float weight = r.get().get();
 
-			if ( weight > 0.0f )
+			if ( weight > 1.0f )
 				pixel.set( pixel.get() / weight );
 		}
 	}
@@ -147,5 +153,40 @@ public class VolumeInjection
 			pixel.set( pixel.get() + (float)( value * intensity ) );
 			weight.set( weight.get() + (float)value );
 		}
+	}
+
+	public Img< FloatType > project()
+	{
+		final Img< FloatType > proj = ArrayImgs.floats( image.dimension( 0 ), image.dimension( 1 ) );
+
+		final RandomAccess< FloatType > ra = image.randomAccess();
+		final RandomAccess< FloatType > raW = weight.randomAccess();
+		final Cursor< FloatType > c = proj.localizingCursor();
+
+		while ( c.hasNext() )
+		{
+			c.fwd();
+			ra.setPosition( c.getIntPosition( 0 ), 0 );
+			ra.setPosition( c.getIntPosition( 1 ), 1 );
+
+			double sum = 0;
+			double count = 0;
+
+			for ( int z = 0; z < image.dimension( 2 ); ++z )
+			{
+				ra.setPosition( z, 2 );
+				raW.setPosition( ra );
+
+				if ( ra.get().get() > 0 )
+				{
+					sum += ra.get().get() * raW.get().get();
+					count += raW.get().get();
+				}
+			}
+
+			c.get().setReal( sum / count );
+		}
+
+		return proj;
 	}
 }
