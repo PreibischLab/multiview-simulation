@@ -79,7 +79,7 @@ public class Tools
 		}
 	}
 
-    public static void save( final Img< FloatType > img, final String file )
+    public static void save( final RandomAccessibleInterval< FloatType > img, final String file )
     {
     	final ImagePlus imp = ImageJFunctions.wrap( img, "" ).duplicate();
 
