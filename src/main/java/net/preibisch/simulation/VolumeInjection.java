@@ -6,7 +6,6 @@ import net.imglib2.RandomAccessible;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgs;
-import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Util;
 import net.imglib2.view.Views;
@@ -14,7 +13,7 @@ import net.imglib2.view.Views;
 public class VolumeInjection
 {
 	final RandomAccessibleInterval< FloatType > image, weight;
-	final RandomAccessible< FloatType > infinite;
+	final RandomAccessible< FloatType > infinite, infWeight;
 	final int numDimensions;
 	final int[] size;
 	final double[] two_sq_sigma;
@@ -30,6 +29,7 @@ public class VolumeInjection
 		this.image = image;
 		this.weight = weight;
 		this.infinite = Views.extendZero( image );
+		this.infWeight = Views.extendZero( weight );
 
 		this.size = new int[ numDimensions ];
 
@@ -44,7 +44,7 @@ public class VolumeInjection
 			}
 			else
 			{
-				size[ d ] = Util.getSuggestedKernelDiameter( sigma[ d ] ) * 3 / 2;
+				size[ d ] = Util.getSuggestedKernelDiameter( sigma[ d ] );
 				two_sq_sigma[ d ] = 2 * sigma[ d ] * sigma[ d ];
 			}
 		}
@@ -73,11 +73,11 @@ public class VolumeInjection
 
 	public int[] getSize() { return size; }
 
+	public RandomAccessibleInterval< FloatType > getImage() { return image; }
+	public RandomAccessibleInterval< FloatType > getWeight() { return weight; }
+
 	public void normalize()
 	{
-		ImageJFunctions.wrapFloat( image, "img" ).duplicate().show();
-		ImageJFunctions.wrapFloat( weight, "weight" ).duplicate().show();
-
 		final Cursor< FloatType > c = Views.iterable( image ).localizingCursor();
 		final RandomAccess< FloatType > r = weight.randomAccess();
 
@@ -136,7 +136,7 @@ public class VolumeInjection
 			final double[] location )
 	{
 		final Cursor< FloatType > cursor = getCursor( location );
-		final RandomAccess< FloatType > ra = weight.randomAccess();
+		final RandomAccess< FloatType > ra = infWeight.randomAccess();
 
 		while ( cursor.hasNext() )
 		{
