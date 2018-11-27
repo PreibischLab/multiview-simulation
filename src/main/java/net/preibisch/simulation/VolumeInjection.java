@@ -76,20 +76,39 @@ public class VolumeInjection
 	public RandomAccessibleInterval< FloatType > getImage() { return image; }
 	public RandomAccessibleInterval< FloatType > getWeight() { return weight; }
 
-	public void normalize()
+	public Img< FloatType > normalize()
 	{
-		final Cursor< FloatType > c = Views.iterable( image ).localizingCursor();
-		final RandomAccess< FloatType > r = weight.randomAccess();
+		return normalize( image, weight );
+	}
+
+	public static Img< FloatType > normalize( final RandomAccessibleInterval< FloatType > image, final RandomAccessibleInterval< FloatType > weight)
+	{
+		final Img< FloatType > normed = ArrayImgs.floats( image.dimension( 0 ), image.dimension( 1 ), image.dimension( 2 ) );
+
+		normalize( normed, image, weight );
+
+		return normed;
+	}
+
+	public static void normalize( final RandomAccessibleInterval< FloatType > normed, final RandomAccessibleInterval< FloatType > image, final RandomAccessibleInterval< FloatType > weight )
+	{
+		final Cursor< FloatType > c = Views.iterable( normed ).localizingCursor();
+		final RandomAccess< FloatType > rI = image.randomAccess();
+		final RandomAccess< FloatType > rW = weight.randomAccess();
 
 		while ( c.hasNext() )
 		{
 			final FloatType pixel = c.next();
-			r.setPosition( c );
+			rI.setPosition( c );
+			rW.setPosition( c );
 
-			final float weight = r.get().get();
+			final float w = rW.get().get();
+			final float v = rI.get().get();
 
-			if ( weight > 1.0f )
-				pixel.set( pixel.get() / weight );
+			if ( w > 1.0f )
+				pixel.set( v / w );
+			else
+				pixel.set( v );
 		}
 	}
 
