@@ -28,6 +28,7 @@ import ij.io.Opener;
 import ij.process.ImageProcessor;
 
 import java.awt.Image;
+import java.io.File;
 import java.util.Random;
 
 import mpicbg.util.RealSum;
@@ -154,6 +155,9 @@ public class Tools
 
 	public static Img< FloatType > open( final String name, final ImgFactory< FloatType > factory )
 	{
+		if ( !new File( name ).exists() )
+			throw new RuntimeException( "file '" + name + "' does not exisit." );
+
 		final Opener io = new Opener();
 		ImagePlus imp = io.openImage( name );
 		
