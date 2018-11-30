@@ -404,7 +404,7 @@ public class SimulateMultiViewAberrations
 		final double[] rayPosition = new double[ 3 ];
 
 		final double nA = 1.00; // air (intensity == 0)
-		final double nB = ri/2.0; // water (intensity == 1)
+		final double nB = 1.005; // water (intensity == 1)
 
 		final Cursor< FloatType > c = proj.localizingCursor();
 		
@@ -643,7 +643,7 @@ public class SimulateMultiViewAberrations
         Img< FloatType > ri = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
 
         // draw a small sphere for every pixel of a larger sphere
-        multiSpheres( img, ri, 0, 1, scale, rnd );
+        multiSpheres( img, ri, scale, rnd );
         
         if ( scale == 2 )
         {
@@ -689,7 +689,7 @@ public class SimulateMultiViewAberrations
     public static < T extends RealType< T > > void multiSpheres(
             final RandomAccessibleInterval< T > image,
             final RandomAccessibleInterval< T > ri,
-            double minValueIm, double maxValueIm, final int scale,
+            final int scale,
             final Random rnd )
     {
             // the number of dimensions
@@ -730,9 +730,10 @@ public class SimulateMultiViewAberrations
             final ArrayList< Pair< Pair< Point, Long >, double[] > > centers = new ArrayList<>();
             centers.add( new ValuePair<>( new ValuePair<>( center1, radiusLargeSphere1 + maxRadius + 8 ), new double[] { 0.0, 0.0, 5, 5 } ) );
             centers.add( new ValuePair<>( new ValuePair<>( center3, radiusLargeSphere1 + maxRadius + 8), new double[] { 0.0, 0.0, 4, 4 } ) );
-            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 4.0, 5.0, 4.0, 5.0 } ) );
+            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 4.0, 5.0 } ) );
 
             double minValueRi, maxValueRi;
+            double minValueIm, maxValueIm;
 
             for ( final Pair< Pair< Point, Long >, double[] > center : centers )
             {
@@ -876,7 +877,7 @@ public class SimulateMultiViewAberrations
 				System.out.println( tag );
 				System.out.println( new File(  dir + "refr_img_" + tag + ".tif" ).getAbsolutePath() );
 
-				//if ( !new File(  dir + "refr_img_" + tag + ".tif" ).exists() )
+				if ( !new File(  dir + "refr_img_" + tag + ".tif" ).exists() )
 				{
 					VolumeInjection simulated = refract3d( rotIm, rotRi, illum, z, lsMiddle, lsEdge, ri );
 					Tools.save( simulated.getImage(), dir + "refr_img_" + tag + ".tif" );
@@ -894,7 +895,7 @@ public class SimulateMultiViewAberrations
 				RunJob.display( weight, "weight" );
 				//RunJob.display( refr, "norm" );
 
-				Img< FloatType> proj = projectToCamera( rotIm, rotRi, refr, ri );
+				Img< FloatType> proj = projectToCamera( rotIm, rotIm, refr, ri );
 				RunJob.display( proj, "proj" );
 				Tools.save( proj, dir + "proj_" + tag + ".tif" );
 			}
