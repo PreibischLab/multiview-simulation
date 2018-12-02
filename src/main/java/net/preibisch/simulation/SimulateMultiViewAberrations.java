@@ -40,6 +40,7 @@ import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
 import net.imglib2.algorithm.fft2.FFTConvolution;
+import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.algorithm.region.hypersphere.HyperSphere;
 import net.imglib2.algorithm.region.hypersphere.HyperSphereCursor;
 import net.imglib2.exception.IncompatibleTypeException;
@@ -47,6 +48,7 @@ import net.imglib2.img.Img;
 import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.cell.CellImgFactory;
+import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.RealType;
@@ -322,53 +324,6 @@ public class SimulateMultiViewAberrations
 		return img;
 	}
 	
-	public static Img< FloatType > attenuate3d( final RandomAccessibleInterval< FloatType > randomAccessible, final double delta )
-	{
-		// the attenuated image
-		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( randomAccessible, new FloatType() );
-		
-		// make a plane that only contains x & z, this is the origin for the attenuation along y
-		final RandomAccessibleInterval< FloatType > startMatrix = Views.hyperSlice( randomAccessible, 1, 0 );
-		final Cursor< FloatType > c = Views.iterable( startMatrix ).localizingCursor();
-		
-		final RandomAccess< FloatType > rIn = randomAccessible.randomAccess();
-		final RandomAccess< FloatType > rOut = img.randomAccess();
-		final int[] l = new int[ 3 ];
-		
-		while ( c.hasNext() )
-		{
-			c.fwd();
-			
-			l[ 0 ] = c.getIntPosition( 0 );
-			l[ 1 ] = (int)randomAccessible.dimension( 1 ) - 1;
-			l[ 2 ] = c.getIntPosition( 1 );
-			
-			rIn.setPosition( l );
-			rOut.setPosition( l );
-			
-			// light intensity goes down from 1...0 depending on the image intensities
-			double n = 1;
-			
-			for ( int y = 0; y < randomAccessible.dimension( 0 ); ++y )
-			{
-				final double v = rIn.get().get();
-				
-				// probability that light is absorbed at this point
-				final double phiN = v * delta * n;
-				
-				// n is >=0
-				n = Math.max( n - phiN, 0 );
-				
-				// set attenuated intensity
-				rOut.get().set( (float) ( v * n ) );
-				
-				rIn.bck( 1 );
-				rOut.bck( 1 );
-			}
-		}
-		
-		return img;
-	}
 
 	private static final boolean inside( final double[] rayPosition, final Interval interval )
 	{
@@ -380,14 +335,17 @@ public class SimulateMultiViewAberrations
 	}
 
 	public static Img< FloatType > projectToCamera(
-			final RandomAccessibleInterval< FloatType > imgIn,
+			//final RandomAccessibleInterval< FloatType > imgIn,
 			final RandomAccessibleInterval< FloatType > imgRi,
 			final RandomAccessibleInterval< FloatType > refr, final double ri )
 	{
 		// the refracted image
 		final Img< FloatType > proj = new ArrayImgFactory< FloatType >( new FloatType() ).create( new long[] { refr.dimension( 0 ), refr.dimension( 1 ) } );
 
-		final RealRandomAccess< FloatType > rrIm = Views.interpolate( Views.extendMirrorSingle( imgIn ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
+		final Img< FloatType > tmp = new ArrayImgFactory< FloatType >( new FloatType() ).create( imgRi );
+		final RandomAccess< FloatType > rt = Views.extendZero( tmp ).randomAccess();
+
+		//final RealRandomAccess< FloatType > rrIm = Views.interpolate( Views.extendMirrorSingle( imgIn ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
 		final RealRandomAccess< FloatType > rrRi = Views.interpolate( Views.extendMirrorSingle( imgRi ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
 		final RealRandomAccess< FloatType > rrRef = Views.interpolate( Views.extendMirrorSingle( refr ), new NLinearInterpolatorFactory<>() ).realRandomAccess();
 
@@ -404,7 +362,7 @@ public class SimulateMultiViewAberrations
 		final double[] rayPosition = new double[ 3 ];
 
 		final double nA = 1.00; // air (intensity == 0)
-		final double nB = 1.005; // water (intensity == 1)
+		final double nB = 1.01; // water (intensity == 1)
 
 		final Cursor< FloatType > c = proj.localizingCursor();
 		
@@ -412,75 +370,122 @@ public class SimulateMultiViewAberrations
 		{
 			c.fwd();
 
-			rayPosition[ 0 ] = c.getIntPosition( 0 );
-			rayPosition[ 1 ] = c.getIntPosition( 1 );
-			rayPosition[ 2 ] = 0;
+			final boolean debug = false;
 
-			rayVector[ 0 ] = 0;
-			rayVector[ 1 ] = 0;
-			rayVector[ 2 ] = 1;
+			//if ( c.getIntPosition( 0 ) == 78 && c.getIntPosition( 1 ) == 75 )
+			//	debug = true;
 
-			double signal = 0;
-			long maxMoves = imgRi.dimension( 2 );
-			int moves = 0;
+			double avgValue = 0;
 
-			while ( inside( rayPosition, refr ) && moves < maxMoves )
+			for ( int i = 0; i < 10; ++i )
 			{
-				++moves;
-				rrIm.setPosition( rayPosition );
+				rayPosition[ 0 ] = c.getIntPosition( 0 ) + (rnd.nextDouble() - 0.5);
+				rayPosition[ 1 ] = c.getIntPosition( 1 ) + (rnd.nextDouble() - 0.5);
+				rayPosition[ 2 ] = 1;
+	
+				rayVector[ 0 ] = 0;//(rnd.nextDouble() - 0.5)/100;
+				rayVector[ 1 ] = 0;//(rnd.nextDouble() - 0.5)/100;
+				rayVector[ 2 ] = 1;
+	
+				double signal = 0;
+				long maxMoves = imgRi.dimension( 2 );
+				int moves = 0;
 
-				// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
-				Hessian.computeHessianMatrix3D( rrIm, matrix );
+				//if ( debug )
+					//System.out.println( "\n" + Util.printCoordinates( rayPosition ) );
 
-				double ev = Hessian.computeLargestEigenVectorAndValue3d( matrix, eigenVector );
-
-				if ( Math.abs( ev ) > 0.01 )
+				while ( inside( rayPosition, refr ) && moves < maxMoves )
 				{
-					// compute refractive index change
+					++moves;
 					rrRi.setPosition( rayPosition );
+	
+					// normal vector of refraction plane (still maybe needs to be inverted to point towards the incoming signal)
+					Hessian.computeHessianMatrix3D( rrRi, matrix );
+	
+					double ev = Hessian.computeLargestEigenVectorAndValue3d( matrix, eigenVector );
+	
+					//if ( debug )
+						//System.out.println( "ev: " + ev );
 
-					rrRi.move( -rayVector[ 0 ], 0 );
-					rrRi.move( -rayVector[ 1 ], 1 );
-					rrRi.move( -rayVector[ 2 ], 2 );
+					if ( Math.abs( ev ) > 0.01 )
+					{
+						// compute refractive index change
+						rrRi.setPosition( rayPosition );
+	
+						rrRi.move( -rayVector[ 0 ], 0 );
+						rrRi.move( -rayVector[ 1 ], 1 );
+						rrRi.move( -rayVector[ 2 ], 2 );
+	
+						// intensity at the origin of the ray
+						final double i0 = rrRi.get().get();
+	
+						rrRi.move( 2*rayVector[ 0 ], 0 );
+						rrRi.move( 2*rayVector[ 1 ], 1 );
+						rrRi.move( 2*rayVector[ 2 ], 2 );
+	
+						// intensity at the projected location of the ray
+						final double i1 = rrRi.get().get();
+	
+						final double n0 = ( nB - nA ) * i0 + nA;
+						final double n1 = ( nB - nA ) * i1 + nA;
 
-					// intensity at the origin of the ray
-					final double i0 = rrRi.get().get();
+						//if ( debug )
+						//	System.out.println( n0 + " " + n1 );
 
-					rrRi.move( 2*rayVector[ 0 ], 0 );
-					rrRi.move( 2*rayVector[ 1 ], 1 );
-					rrRi.move( 2*rayVector[ 2 ], 2 );
+						final double thetaI = Raytrace.incidentAngle( rayVector, eigenVector );
+						final double thetaT = Raytrace.refract( rayVector, eigenVector, n0, n1, thetaI, refractedRay );
+	
+						// total reflection
+						if ( Double.isNaN( thetaT ) )
+						{
+							if ( debug )
+								System.out.println( "reflect: " + thetaI + " " + thetaT );
 
-					// intensity at the projected location of the ray
-					final double i1 = rrRi.get().get();
+							//Raytrace.reflect( rayVector, eigenVector, refractedRay );
+							refractedRay[ 0 ] = rayVector[ 0 ];
+							refractedRay[ 1 ] = rayVector[ 1 ];
+							refractedRay[ 2 ] = rayVector[ 2 ];
+						}
 
-					final double n0 = ( nB - nA ) * i0 + nA;
-					final double n1 = ( nB - nA ) * i1 + nA;
+						Raytrace.norm( refractedRay );
+	
+						// update the ray vector
+						rayVector[ 0 ] = refractedRay[ 0 ];
+						rayVector[ 1 ] = refractedRay[ 1 ];
+						rayVector[ 2 ] = refractedRay[ 2 ];
 
-					final double thetaI = Raytrace.incidentAngle( rayVector, eigenVector );
-					final double thetaT = Raytrace.refract( rayVector, eigenVector, n0, n1, thetaI, refractedRay );
+						if ( debug )
+							System.out.println( Util.printCoordinates( rayVector ) );
+					}
+	
+					// place a gaussian sphere
+					rrRef.setPosition( rayPosition );
+					signal += rrRef.get().get();
+	
+					rayPosition[ 0 ] += rayVector[ 0 ];
+					rayPosition[ 1 ] += rayVector[ 1 ];
+					rayPosition[ 2 ] += rayVector[ 2 ];
 
-					// total reflection
-					if ( Double.isNaN( thetaT ) )
-						Raytrace.reflect( rayVector, eigenVector, refractedRay );
+					if ( debug )
+					{
+						rt.setPosition( Math.round( rayPosition[ 0 ] ), 0 );
+						rt.setPosition( Math.round( rayPosition[ 1 ] ), 1 );
+						rt.setPosition( Math.round( rayPosition[ 2 ] ), 2 );
+						rt.get().set( rt.get().get() + 1.0f );
 
-					Raytrace.norm( refractedRay );
-
-					// update the ray vector
-					rayVector[ 0 ] = refractedRay[ 0 ];
-					rayVector[ 1 ] = refractedRay[ 1 ];
-					rayVector[ 2 ] = refractedRay[ 2 ];
+						//System.out.println( "signal: " + signal + " @ " + Util.printCoordinates( rayPosition ) );
+					}
 				}
 
-				// place a gaussian sphere
-				rrRef.setPosition( rayPosition );
-				signal += rrRef.get().get();
+				avgValue += signal;
 
-				rayPosition[ 0 ] += rayVector[ 0 ];
-				rayPosition[ 1 ] += rayVector[ 1 ];
-				rayPosition[ 2 ] += rayVector[ 2 ];
 			}
 
-			c.get().set( (float)signal );
+			c.get().set( (float)(avgValue/10.0) );
+
+			if ( debug )
+				ImageJFunctions.show( tmp );
+
 		}
 
 		return proj;
@@ -528,7 +533,7 @@ public class SimulateMultiViewAberrations
 		long time = System.currentTimeMillis();
 
 		// for each point on the xz plane at y=0
-		final int numRays = 100000;
+		final int numRays = 200000;
 		final long maxMoves = img.dimension( 2 );
 		final Random rnd = new Random( 2423 );
 
@@ -540,9 +545,11 @@ public class SimulateMultiViewAberrations
 			final double lightsheetthickness = ls.predict( rayPosition[ 0 ] );
 			rayPosition[ 2 ] = z + (rnd.nextDouble()*lightsheetthickness)-lightsheetthickness/2.0;//c.getIntPosition( 1 );
 
-			rayVector[ 0 ] = 0;
+			rayVector[ 0 ] = (rnd.nextDouble() - 0.5)/5;
 			rayVector[ 1 ] = illum ? -1 : 1;
 			rayVector[ 2 ] = 0;
+
+			Raytrace.norm( rayVector );
 
 			int moves = 0;
 
@@ -587,7 +594,11 @@ public class SimulateMultiViewAberrations
 					// total reflection
 					if ( Double.isNaN( thetaT ) )
 					{
-						continue;
+						refractedRay[ 0 ] = rayVector[ 0 ];
+						refractedRay[ 1 ] = rayVector[ 1 ];
+						refractedRay[ 2 ] = rayVector[ 2 ];
+
+						//continue; // that's an expensive getting stuck
 						//Raytrace.reflect( rayVector, eigenVector, refractedRay );
 					}
 
@@ -622,12 +633,12 @@ public class SimulateMultiViewAberrations
 		return inject;
 	}
 
-	public static Pair< Img< FloatType >, Img< FloatType > > simulate()
+	public static Pair< Img< FloatType >, Img< FloatType > > simulate( final String dir)
 	{
-		return simulate( rnd );
+		return simulate( rnd, dir );
 	}
 
-	public static Pair< Img< FloatType >, Img< FloatType > > simulate( final Random rnd )
+	public static Pair< Img< FloatType >, Img< FloatType > > simulate( final Random rnd, final String dir )
 	{
 		// rendering in a higher resolution and then downsampling it makes
 		// it much smoother and somewhat more realistic, otherwise there
@@ -640,9 +651,16 @@ public class SimulateMultiViewAberrations
 		
 		// open with ImgOpener using an ImagePlusImg
         Img< FloatType > img = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
-        Img< FloatType > ri = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
+        System.out.println( "Loading " + dir + "block3.tif" );
+        Img< FloatType > ri = Tools.open( dir + "block3.tif", new ArrayImgFactory< FloatType >() );// new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
+
+        System.out.println( "Adding noise" );
+        for ( final FloatType t : ri )
+        	t.setReal( Math.max( 0, t.get() + (rnd.nextDouble() - 0.5)/10 ) );
+        //Gauss3.gauss( 3, Views.extendMirrorSingle( img ), img );
 
         // draw a small sphere for every pixel of a larger sphere
+        System.out.println( "Adding spheres" );
         multiSpheres( img, ri, scale, rnd );
         
         if ( scale == 2 )
@@ -717,20 +735,17 @@ public class SimulateMultiViewAberrations
 
             // compute the radius of the large sphere so that we do not draw
             // outside of the defined interval
-            long radiusLargeSphere1 = minSize / 2 - 47*scale - 1 /*new*/ -45;
+            long radiusLargeSphere1 = minSize / 2 - 47*scale - 1 /*new*/;// -45;
 
-            //center1.move( -radiusLargeSphere / 2, 0 );
-            center1.move( -2*radiusLargeSphere1 / 3, 1 );
-
-            //center2.move( radiusLargeSphere / 2, 0 );
-            //center2.move( radiusLargeSphere / 2, 1 );
-
-            center3.move( 2*radiusLargeSphere1 / 3, 1 );
+            //center1.move( -2*radiusLargeSphere1 / 3, 1 );
+            //center3.move( 2*radiusLargeSphere1 / 3, 1 );
 
             final ArrayList< Pair< Pair< Point, Long >, double[] > > centers = new ArrayList<>();
-            centers.add( new ValuePair<>( new ValuePair<>( center1, radiusLargeSphere1 + maxRadius + 8 ), new double[] { 0.0, 0.0, 5, 5 } ) );
-            centers.add( new ValuePair<>( new ValuePair<>( center3, radiusLargeSphere1 + maxRadius + 8), new double[] { 0.0, 0.0, 4, 4 } ) );
-            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 4.0, 5.0 } ) );
+            //centers.add( new ValuePair<>( new ValuePair<>( center1, radiusLargeSphere1 + maxRadius + 8 ), new double[] { 0.0, 0.0, 5, 5 } ) );
+            //centers.add( new ValuePair<>( new ValuePair<>( center3, radiusLargeSphere1 + maxRadius + 8), new double[] { 0.0, 0.0, 4, 4 } ) );
+            //centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 4.0, 5.0 } ) );
+
+            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 1.0, 1.1 } ) );
 
             double minValueRi, maxValueRi;
             double minValueIm, maxValueIm;
@@ -848,7 +863,7 @@ public class SimulateMultiViewAberrations
 		// including the ground-truth image, which is rotated once by the angle offset
 		// so that it is realistic
 		System.out.println( new Date( System.currentTimeMillis() ) + ": rendering basis for ground truth" );
-		final Pair< Img<FloatType>, Img<FloatType> > rendered = simulate( new Random( 464232194 ) );
+		final Pair< Img<FloatType>, Img<FloatType> > rendered = simulate( new Random( 464232194 ), dir );
 
 		if ( zPlanes == null )
 		{
@@ -861,13 +876,13 @@ public class SimulateMultiViewAberrations
 
 		RunJob.display( rendered.getA(), "rendered" );
 		RunJob.display( rendered.getB(), "RI_rendered" );
-		//SimpleMultiThreading.threadHaltUnClean();
+		SimpleMultiThreading.threadHaltUnClean();
 
 		for ( int angle = 0; angle <= 0; angle += angleIncrement )
 		{
 			System.out.println( new Date( System.currentTimeMillis() ) + ": rotating angle " + angle );
-			Img<FloatType> rotIm = rotateAroundAxis( rendered.getA(), 0, angle + angleOffset );
-			Img<FloatType> rotRi = rotateAroundAxis( rendered.getB(), 0, angle + angleOffset );
+			Img<FloatType> rotIm = rendered.getA();//rotateAroundAxis( rendered.getA(), 0, angle + angleOffset );
+			Img<FloatType> rotRi = rendered.getB();//rotateAroundAxis( rendered.getB(), 0, angle + angleOffset );
 
 			System.out.println( new Date( System.currentTimeMillis() ) + ": refracting angle " + angle );
 
@@ -884,19 +899,21 @@ public class SimulateMultiViewAberrations
 					Tools.save( simulated.getWeight(), dir + "refr_weight_" + tag + ".tif" );
 				}
 
+				//SimpleMultiThreading.threadHaltUnClean();
+
 				//RunJob.display( refr.getImage(), "img" ).show();
 				//RunJob.display( refr.getWeight(), "weight" ).show();
 				//RunJob.display( refr.normalize(), "normed" ).show();
 
 				Img<FloatType> refr = Tools.open( dir + "refr_img_" + tag + ".tif", new ArrayImgFactory<>() );
-				Img<FloatType> weight = Tools.open( dir + "refr_weight_" + tag + ".tif", new ArrayImgFactory<>() );
+				//Img<FloatType> weight = Tools.open( dir + "refr_weight_" + tag + ".tif", new ArrayImgFactory<>() );
 				//Img<FloatType> refr = VolumeInjection.normalize( image, weight );
 				RunJob.display( refr, "refr" );
-				RunJob.display( weight, "weight" );
+				//RunJob.display( weight, "weight" );
 				//RunJob.display( refr, "norm" );
 
-				Img< FloatType> proj = projectToCamera( rotIm, rotIm, refr, ri );
-				RunJob.display( proj, "proj" );
+				Img< FloatType> proj = projectToCamera( rotRi, refr, ri );
+				//RunJob.display( proj, "proj" );
 				Tools.save( proj, dir + "proj_" + tag + ".tif" );
 			}
 
@@ -944,28 +961,21 @@ public class SimulateMultiViewAberrations
 		System.out.println( "Reflection: " );
 		System.out.println( "t: " + Util.printCoordinates( r ) );
 
-		/*
-		final double[] sigma = new double[] { 0.5, 0.5, 0.0 };
-		final VolumeInjection inject = new VolumeInjection( ArrayImgs.floats( 256, 256, 256 ), ArrayImgs.floats( 256, 256, 256 ), sigma );
-
-		System.out.println( "sum weights = " + inject.getSumWeights() );
-		System.out.println( "num pixels = " + inject.getNumPixels() );
-		System.out.println( "size = " + Util.printCoordinates( inject.getSize() ) );
-		*/
-		//System.exit( 0 );
-
-		final String dir = "rendered/";
+		final String dir = "render/";
 		final ExecutorService service = Executors.newFixedThreadPool( Runtime.getRuntime().availableProcessors() );
 
 		new ImageJ();
 
-		final int z = 90;
+		//ImageJFunctions.show( Tools.openBF( dir + "block3.tif", new ArrayImgFactory< FloatType >() ) );
+		//SimpleMultiThreading.threadHaltUnClean();
+
+		final int z = 176;
 		final double lsMiddle = 1.0;
 		final double lsEdge = 3.0;
-		final double ri = 1.01;
-		final boolean illum = true; // true > bottom, false > top
+		final double ri = 1.1;
+		final boolean illum = false; // true > bottom, false > top
 
 		simulate( illum, lsMiddle, lsEdge, ri, dir, service, z );
-		simulate( !illum, lsMiddle, lsEdge, ri, dir, service, z );
+		//simulate( !illum, lsMiddle, lsEdge, ri, dir, service, z );
 	}
 }
