@@ -882,7 +882,7 @@ public class SimulateMultiViewAberrations
 
 		RunJob.display( rendered.getA(), "rendered" );
 		RunJob.display( rendered.getB(), "RI_rendered" );
-		SimpleMultiThreading.threadHaltUnClean();
+		//SimpleMultiThreading.threadHaltUnClean();
 
 		for ( int angle = 0; angle <= 0; angle += angleIncrement )
 		{
