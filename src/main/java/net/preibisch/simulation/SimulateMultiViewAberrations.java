@@ -337,7 +337,7 @@ public class SimulateMultiViewAberrations
 	public static Img< FloatType > projectToCamera(
 			//final RandomAccessibleInterval< FloatType > imgIn,
 			final RandomAccessibleInterval< FloatType > imgRi,
-			final RandomAccessibleInterval< FloatType > refr, final double ri )
+			final RandomAccessibleInterval< FloatType > refr, final double ri, final int currentzPlane )
 	{
 		// the refracted image
 		final Img< FloatType > proj = new ArrayImgFactory< FloatType >( new FloatType() ).create( new long[] { refr.dimension( 0 ), refr.dimension( 1 ) } );
@@ -377,7 +377,7 @@ public class SimulateMultiViewAberrations
 
 			double avgValue = 0;
 
-			for ( int i = 0; i < 10; ++i )
+			for ( int i = 0; i < 30; ++i )
 			{
 				rayPosition[ 0 ] = c.getIntPosition( 0 ) + (rnd.nextDouble() - 0.5);
 				rayPosition[ 1 ] = c.getIntPosition( 1 ) + (rnd.nextDouble() - 0.5);
@@ -460,7 +460,13 @@ public class SimulateMultiViewAberrations
 	
 					// place a gaussian sphere
 					rrRef.setPosition( rayPosition );
-					signal += rrRef.get().get();
+					final double zOffset = Math.abs( rayPosition[ 2 ] - currentzPlane );
+					/*
+					 * 0 > 1
+					 * 0.5 > 1.5
+					 * 1 > 2
+					 */
+					signal += ( rrRef.get().get() / Math.pow( zOffset + 1.0, 1.00 / 1.75 ));
 	
 					rayPosition[ 0 ] += rayVector[ 0 ];
 					rayPosition[ 1 ] += rayVector[ 1 ];
@@ -745,7 +751,7 @@ public class SimulateMultiViewAberrations
             //centers.add( new ValuePair<>( new ValuePair<>( center3, radiusLargeSphere1 + maxRadius + 8), new double[] { 0.0, 0.0, 4, 4 } ) );
             //centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 4.0, 5.0 } ) );
 
-            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 1.0, 1.1 } ) );
+            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.5, 1.0, 1.0, 1.1 } ) );
 
             double minValueRi, maxValueRi;
             double minValueIm, maxValueIm;
@@ -786,7 +792,7 @@ public class SimulateMultiViewAberrations
 	                    		cursorRi.get().setReal( minValueRi );
 
 	                    // the random radius of the current small hypersphere
-	                    int radius = rnd.nextInt( maxRadius ) + 1;
+	                    int radius = Math.max( rnd.nextInt( maxRadius ) + 1, maxRadius - 1 );
 	
 	                    // instantiate a small hypersphere at the location of the current pixel
 	                    // in the large hypersphere
@@ -797,7 +803,7 @@ public class SimulateMultiViewAberrations
 	                    double randomValue = rnd.nextDouble();
 	
 	                    // take only every 4^dimension'th pixel by chance so that it is not too crowded
-	                    if ( Math.round( randomValue * 10000 ) % Util.pow( 7*scale, numDimensions ) == 0 )
+	                    if ( ( randomValue * 50000 ) < 2 )
 	                    {
 	                            // scale to right range
 	                            randomValue = rnd.nextDouble();
@@ -912,7 +918,7 @@ public class SimulateMultiViewAberrations
 				//RunJob.display( weight, "weight" );
 				//RunJob.display( refr, "norm" );
 
-				Img< FloatType> proj = projectToCamera( rotRi, refr, ri );
+				Img< FloatType> proj = projectToCamera( rotRi, refr, ri, z );
 				//RunJob.display( proj, "proj" );
 				Tools.save( proj, dir + "proj_" + tag + ".tif" );
 			}
