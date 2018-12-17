@@ -362,7 +362,7 @@ public class SimulateMultiViewAberrations
 		final double[] rayPosition = new double[ 3 ];
 
 		final double nA = 1.00; // air (intensity == 0)
-		final double nB = 1.01; // water (intensity == 1)
+		final double nB = ri;//1.01; // water (intensity == 1)
 
 		final Cursor< FloatType > c = proj.localizingCursor();
 		
