@@ -31,7 +31,6 @@ import java.util.concurrent.Executors;
 
 import ij.IJ;
 import ij.ImageJ;
-import mpicbg.models.AffineModel3D;
 import net.imglib2.Cursor;
 import net.imglib2.Interval;
 import net.imglib2.Point;
@@ -39,20 +38,13 @@ import net.imglib2.RandomAccess;
 import net.imglib2.RandomAccessibleInterval;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.algorithm.fft2.FFTConvolution;
-import net.imglib2.algorithm.gauss3.Gauss3;
 import net.imglib2.algorithm.region.hypersphere.HyperSphere;
 import net.imglib2.algorithm.region.hypersphere.HyperSphereCursor;
-import net.imglib2.exception.IncompatibleTypeException;
 import net.imglib2.img.Img;
-import net.imglib2.img.ImgFactory;
 import net.imglib2.img.array.ArrayImgFactory;
-import net.imglib2.img.cell.CellImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
-import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.RealType;
-import net.imglib2.type.numeric.complex.ComplexFloatType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
 import net.imglib2.util.Util;
@@ -83,247 +75,6 @@ import net.preibisch.simulation.raytracing.Raytrace;
 public class SimulateMultiViewAberrations
 {
 	final static Random rnd = new Random( 464232194 );
-	final public static float minValue = 0.0001f;
-	public final static float avgIntensity = 1;
-
-	public static AffineModel3D axisRotation( final Interval in, final int axis, final int degrees )
-	{
-		// translate so that the center of the image is 0,0,0
-		final AffineModel3D translate1 = new AffineModel3D();
-		translate1.set( 1, 0, 0, -( in.max( 0 ) - in.min( 0 ) )/2,
-					    0, 1, 0, -( in.max( 1 ) - in.min( 1 ) )/2,
-					    0, 0, 1, -( in.max( 2 ) - in.min( 2 ) )/2 );
-		
-		// rotate around an axis
-		final AffineModel3D rot = new AffineModel3D();
-		rot.rotate( axis, (float)Math.toRadians( degrees ) );
-
-		// translate back to the center
-		final AffineModel3D translate2 = new AffineModel3D();
-		translate2.set( 1, 0, 0, ( in.max( 0 ) - in.min( 0 ) )/2,
-					    0, 1, 0, ( in.max( 1 ) - in.min( 1 ) )/2,
-					    0, 0, 1, ( in.max( 2 ) - in.min( 2 ) )/2 );
-
-		translate1.preConcatenate( rot );
-		translate1.preConcatenate( translate2 );
-
-		return translate1;
-	}
-
-	public static Img< FloatType > rotateAroundAxis( final RandomAccessibleInterval< FloatType > in, final int axis, final int degrees )
-	{
-		// final model
-		final AffineModel3D affine = axisRotation( in, axis, degrees ).createInverse();
-
-		final Img< FloatType > out = new ArrayImgFactory< FloatType >().create( in, new FloatType() );
-
-		final NLinearInterpolatorFactory< FloatType > factory = new NLinearInterpolatorFactory< FloatType >();
-		final RealRandomAccessible< FloatType > interpolant = Views.interpolate( Views.extendZero( in ), factory );
-		final RealRandomAccess< FloatType > realRandomAccess = interpolant.realRandomAccess();
-
-		final Cursor< FloatType > c = out.localizingCursor();
-		final int[] l = new int[ out.numDimensions() ];
-		final double[] lf = new double[ out.numDimensions() ];
-		
-		while ( c.hasNext() )
-		{
-			c.fwd();
-			c.localize( l );
-
-			lf[ 0 ] = l[ 0 ];
-			lf[ 1 ] = l[ 1 ];
-			lf[ 2 ] = l[ 2 ];
-			
-			affine.applyInPlace( lf );
-			realRandomAccess.setPosition( lf );
-			
-			c.get().set( realRandomAccess.get() );
-		}
-
-		return out;
-	}
-	
-	/**
-	 * Scales the reduced lightsheet acquisition back to isotropic size
-	 * 
-	 * @param randomAccessible - the input
-	 * @param inc - every n'th 
-	 * @return - the isotropic image
-	 */
-	public static Img< FloatType > makeIsotropic( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc )
-	{
-		final long[] dim = new long[]{ randomAccessible.dimension( 0 ), randomAccessible.dimension( 1 ), ( randomAccessible.dimension( 2 ) - 1 ) * inc + 1 };
-		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( dim, new FloatType() );
-		
-		final NLinearInterpolatorFactory< FloatType > factory = new NLinearInterpolatorFactory< FloatType >();
-		final RealRandomAccessible< FloatType > interpolant = Views.interpolate( Views.extendMirrorSingle( randomAccessible ), factory );
-		final RealRandomAccess< FloatType > realRandomAccess = interpolant.realRandomAccess();
-		
-		final Cursor< FloatType > c = img.localizingCursor();
-		final int[] l = new int[ img.numDimensions() ];
-		final double[] lf = new double[ img.numDimensions() ];
-		
-		while ( c.hasNext() )
-		{
-			c.fwd();
-			c.localize( l );
-			
-			lf[ 0 ] = l[ 0 ];
-			lf[ 1 ] = l[ 1 ];
-			lf[ 2 ] = (float)l[ 2 ] / (float)inc;
-			
-			realRandomAccess.setPosition( lf );
-			c.get().set( realRandomAccess.get() );
-		}
-		
-		return img;
-	}
-	
-	/**
-	 * Scans the sample with a simulated lightsheet ... the width of the lightsheet is implicitly defined by the effective PSF
-	 * 
-	 * @param randomAccessible - input
-	 * @param inc - every n'th 
-	 * @param poissonSNR - which poisson SNR is desired?
-	 * @return every n'th slice
-	 */
-	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR  )
-	{
-		return extractSlices( randomAccessible, inc, poissonSNR, rnd );
-	}
-
-	/**
-	 * Scans the sample with a simulated lightsheet ... the width of the lightsheet is implicitly defined by the effective PSF
-	 * 
-	 * @param randomAccessible - input
-	 * @param inc - every n'th 
-	 * @param poissonSNR - which poisson SNR is desired?
-	 * @param rnd - a random number generator
-	 * @return every n'th slice
-	 */
-	public static Img< FloatType > extractSlices( final RandomAccessibleInterval< FloatType > randomAccessible, final int inc, final float poissonSNR, final Random rnd  )
-	{
-		final long[] dim = new long[]{ randomAccessible.dimension( 0 ), randomAccessible.dimension( 1 ), ( randomAccessible.dimension( 2 ) - 1 )/inc + 1 };
-		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( dim, new FloatType() );
-
-		final RandomAccess< FloatType > r = img.randomAccess();
-		final int[] tmp = new int[ 3 ];
-
-		IJ.showProgress( 0 );
-
-		int countZ = 0;
-		for ( int z = 0; z < randomAccessible.dimension( 2 ); z += inc )
-		{
-			final RandomAccessibleInterval< FloatType > slice = Views.hyperSlice( randomAccessible, 2, z );
-			final Cursor< FloatType > c;
-			
-			if ( poissonSNR >= 0.0 )
-				c = poissonProcess( slice, poissonSNR, rnd ).localizingCursor();
-			else
-				c = Views.iterable( slice ).localizingCursor();
-			
-			tmp[ 2 ] = countZ++;
-			while ( c.hasNext() )
-			{
-				c.fwd();
-				tmp[ 0 ] = c.getIntPosition( 0 );
-				tmp[ 1 ] = c.getIntPosition( 1 );
-				
-				r.setPosition( tmp );
-				r.get().set( c.get() );
-			}
-
-			IJ.showProgress( z, (int)randomAccessible.dimension( 2 ) );
-		}
-		
-		return img;
-	}
-	
-	public static Img< FloatType > poissonProcess( final RandomAccessibleInterval< FloatType > in, final float poissonSNR, final Random rnd )
-	{
-		final Img< FloatType > out = new ArrayImgFactory< FloatType >().create( in, new FloatType() );
-
-		final Cursor< FloatType > c = out.localizingCursor();
-		final RandomAccess< FloatType > r = in.randomAccess();
-		
-		while ( c.hasNext() )
-		{
-			c.fwd();
-			r.setPosition( c );
-			c.get().set( r.get() );
-		}
-		
-		// based on an average intensity of 5 inside the sample
-		Tools.poissonProcess( out, poissonSNR, rnd );
-		
-		return out;
-	}
-	
-	public static Img< FloatType > convolve( final Img< FloatType > img, final Img< FloatType > psf, final ExecutorService service )
-	{
-		Tools.normImage( psf );
-		final Img< FloatType > result = img.factory().create( img, img.firstElement() );
-		final FFTConvolution< FloatType > conv = new FFTConvolution<FloatType>( img, psf, result, getFFTFactory( img ), service );
-		
-		// this fixes the wrong default kernel flipping in older versions of FFTConvolution 
-		conv.setComputeComplexConjugate(false);
-		conv.convolve();
-		
-		return result;
-	}
-	
-	protected static ImgFactory< ComplexFloatType > getFFTFactory( final Img< ? extends RealType< ? > > img )
-	{
-		try
-		{
-			return img.factory().imgFactory( new ComplexFloatType() );
-		}
-		catch ( final IncompatibleTypeException e )
-		{
-			if ( img.size() > Integer.MAX_VALUE / 2 )
-				return new CellImgFactory< ComplexFloatType >( 1024 );
-			return new ArrayImgFactory< ComplexFloatType >();
-		}
-	}
-
-	public static Img< FloatType > computeWeightImage( final RandomAccessibleInterval< FloatType > randomAccessible, final double delta )
-	{
-		// over which the cosine function spans
-		final int cosineSpan = 40;
-		
-		// the weight image
-		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( randomAccessible, new FloatType() );
-		
-		final Cursor< FloatType > c = img.localizingCursor();
-		final int sizeY = (int)randomAccessible.dimension( 1 );
-		
-		while ( c.hasNext() )
-		{
-			c.fwd();
-			
-			int l = ( sizeY - c.getIntPosition( 1 ) - 1 );
-			float value;
-			
-			if ( l < sizeY/2 )
-			{
-				value = 1.0f;
-			}
-			else if ( l > sizeY/2 + cosineSpan )
-			{
-				value = 0.0f;
-			}
-			else
-			{
-				final double pos = ( (double)(l - sizeY/2) / (double)cosineSpan ) * Math.PI;
-				value = (float)( ( Math.cos( pos ) + 1.0 ) / 2.0 );
-			}
-			
-			c.get().set( value );
-		}
-		
-		return img;
-	}
-	
 
 	private static final boolean inside( final double[] rayPosition, final Interval interval )
 	{
@@ -656,9 +407,9 @@ public class SimulateMultiViewAberrations
 			size++; // one pixel is lost when downsampling
 		
 		// open with ImgOpener using an ImagePlusImg
-        Img< FloatType > img = new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
+        Img< FloatType > img = new ArrayImgFactory< FloatType >( new FloatType() ).create( new long[] { size*scale, size*scale, size*scale } );
         System.out.println( "Loading " + dir + "block3.tif" );
-        Img< FloatType > ri = Tools.open( dir + "block3.tif", new ArrayImgFactory< FloatType >() );// new ArrayImgFactory< FloatType >().create( new long[] { size*scale, size*scale, size*scale }, new FloatType() );
+        Img< FloatType > ri = Tools.open( dir + "block3.tif", new ArrayImgFactory< FloatType >( new FloatType() ) );
 
         System.out.println( "Adding noise" );
         for ( final FloatType t : ri )
@@ -685,7 +436,7 @@ public class SimulateMultiViewAberrations
 		for ( int d = 0; d < dim.length; ++d )
 			dim[ d ] = randomAccessible.dimension( d ) / 2 - 1;
 		
-		final Img< FloatType > img = new ArrayImgFactory< FloatType >().create( dim, new FloatType() );
+		final Img< FloatType > img = new ArrayImgFactory< FloatType >( new FloatType() ).create( dim );
 		
 		final NLinearInterpolatorFactory< FloatType > factory = new NLinearInterpolatorFactory< FloatType >();
 		final RealRandomAccessible< FloatType > interpolant = Views.interpolate( Views.extendMirrorSingle( randomAccessible ), factory );
@@ -846,25 +597,6 @@ public class SimulateMultiViewAberrations
 
 	public static void simulate( final boolean illum, final double lsMiddle, final double lsEdge, final double ri, final String dir, final ExecutorService service, ArrayList< Integer > zPlanes )
 	{
-		final float poissonSNR = 25f;
-		final int lightsheetSpacing = 3;
-		final float attenuation = 0.01f;
-		
-		// six angles
-		//final int angleIncrement = 60;
-		//final float osem = 3.0f;
-		
-		// seven angles
-		final int angleIncrement = 52;
-		final float osem = 3.0f;
-
-		// eight angles
-		//final int angleIncrement = 45;
-		//final float osem = 4.0f;
-
-		// so that everything is rotated at least once
-		final int angleOffset = 15;
-		
 		// artificially rendered object based on which everything is computed,
 		// including the ground-truth image, which is rotated once by the angle offset
 		// so that it is realistic
@@ -884,55 +616,52 @@ public class SimulateMultiViewAberrations
 		RunJob.display( rendered.getB(), "RI_rendered" );
 		//SimpleMultiThreading.threadHaltUnClean();
 
-		for ( int angle = 0; angle <= 0; angle += angleIncrement )
+		Img<FloatType> rotIm = rendered.getA();
+		Img<FloatType> rotRi = rendered.getB();
+
+		System.out.println( new Date( System.currentTimeMillis() ) + ": refracting ... " );
+
+		for ( final int z : zPlanes )
 		{
-			System.out.println( new Date( System.currentTimeMillis() ) + ": rotating angle " + angle );
-			Img<FloatType> rotIm = rendered.getA();//rotateAroundAxis( rendered.getA(), 0, angle + angleOffset );
-			Img<FloatType> rotRi = rendered.getB();//rotateAroundAxis( rendered.getB(), 0, angle + angleOffset );
+			String tag = illum + "_" + ri + "_" + z;
+			System.out.println( tag );
+			System.out.println( new File(  dir + "refr_img_" + tag + ".tif" ).getAbsolutePath() );
 
-			System.out.println( new Date( System.currentTimeMillis() ) + ": refracting angle " + angle );
-
-			for ( final int z : zPlanes )
+			if ( !new File(  dir + "refr_img_" + tag + ".tif" ).exists() )
 			{
-				String tag = illum + "_" + ri + "_" + z;
-				System.out.println( tag );
-				System.out.println( new File(  dir + "refr_img_" + tag + ".tif" ).getAbsolutePath() );
-
-				if ( !new File(  dir + "refr_img_" + tag + ".tif" ).exists() )
-				{
-					VolumeInjection simulated = refract3d( rotIm, rotRi, illum, z, lsMiddle, lsEdge, ri );
-					Tools.save( simulated.getImage(), dir + "refr_img_" + tag + ".tif" );
-					Tools.save( simulated.getWeight(), dir + "refr_weight_" + tag + ".tif" );
-				}
-
-				//SimpleMultiThreading.threadHaltUnClean();
-
-				//RunJob.display( refr.getImage(), "img" ).show();
-				//RunJob.display( refr.getWeight(), "weight" ).show();
-				//RunJob.display( refr.normalize(), "normed" ).show();
-
-				Img<FloatType> refr = Tools.open( dir + "refr_img_" + tag + ".tif", new ArrayImgFactory<>() );
-				//Img<FloatType> weight = Tools.open( dir + "refr_weight_" + tag + ".tif", new ArrayImgFactory<>() );
-				//Img<FloatType> refr = VolumeInjection.normalize( image, weight );
-				RunJob.display( refr, "refr" );
-				//RunJob.display( weight, "weight" );
-				//RunJob.display( refr, "norm" );
-
-				Img< FloatType> proj = projectToCamera( rotRi, refr, ri, z );
-				//RunJob.display( proj, "proj" );
-				Tools.save( proj, dir + "proj_" + tag + ".tif" );
+				VolumeInjection simulated = refract3d( rotIm, rotRi, illum, z, lsMiddle, lsEdge, ri );
+				Tools.save( simulated.getImage(), dir + "refr_img_" + tag + ".tif" );
+				Tools.save( simulated.getWeight(), dir + "refr_weight_" + tag + ".tif" );
 			}
 
-			//ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );
-			//ImageJFunctions.show( eigen.getA() ).setDisplayRange( -1, 1 );
-			//ImageJFunctions.show( eigen.getB() ).setDisplayRange( -1, 1 );
-			//ImageJFunctions.show( refr ).setDisplayRange( 0, 1 );
-			//if ( RunJob.isCluster )
-			//	System.exit( 0 );
-			//else
-			//	SimpleMultiThreading.threadHaltUnClean();
+			//SimpleMultiThreading.threadHaltUnClean();
 
+			//RunJob.display( refr.getImage(), "img" ).show();
+			//RunJob.display( refr.getWeight(), "weight" ).show();
+			//RunJob.display( refr.normalize(), "normed" ).show();
+
+			Img<FloatType> refr = Tools.open( dir + "refr_img_" + tag + ".tif", new ArrayImgFactory<>() );
+			//Img<FloatType> weight = Tools.open( dir + "refr_weight_" + tag + ".tif", new ArrayImgFactory<>() );
+			//Img<FloatType> refr = VolumeInjection.normalize( image, weight );
+			RunJob.display( refr, "refr" );
+			//RunJob.display( weight, "weight" );
+			//RunJob.display( refr, "norm" );
+
+			Img< FloatType> proj = projectToCamera( rotRi, refr, ri, z );
+			//RunJob.display( proj, "proj" );
+			Tools.save( proj, dir + "proj_" + tag + ".tif" );
 		}
+
+		//ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );
+		//ImageJFunctions.show( eigen.getA() ).setDisplayRange( -1, 1 );
+		//ImageJFunctions.show( eigen.getB() ).setDisplayRange( -1, 1 );
+		//ImageJFunctions.show( refr ).setDisplayRange( 0, 1 );
+		//if ( RunJob.isCluster )
+		//	System.exit( 0 );
+		//else
+		//	SimpleMultiThreading.threadHaltUnClean();
+
+
 		System.out.println( "done" );
 	}
 
