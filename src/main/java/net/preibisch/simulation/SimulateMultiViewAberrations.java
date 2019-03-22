@@ -408,8 +408,8 @@ public class SimulateMultiViewAberrations
 		
 		// open with ImgOpener using an ImagePlusImg
         Img< FloatType > img = new ArrayImgFactory< FloatType >( new FloatType() ).create( new long[] { size*scale, size*scale, size*scale } );
-        System.out.println( "Loading " + dir + "block3.tif" );
-        Img< FloatType > ri = Tools.open( dir + "block3.tif", new ArrayImgFactory< FloatType >( new FloatType() ) );
+        System.out.println( "Loading " + dir + "block4.tif" );
+        Img< FloatType > ri = Tools.open( dir + "block4.tif", new ArrayImgFactory< FloatType >( new FloatType() ) );
 
         System.out.println( "Adding noise" );
         for ( final FloatType t : ri )
