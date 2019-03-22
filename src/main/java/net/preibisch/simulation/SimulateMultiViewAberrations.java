@@ -639,9 +639,9 @@ public class SimulateMultiViewAberrations
 			//RunJob.display( weight, "weight" );
 			//RunJob.display( refr, "norm" );
 
-			//Img< FloatType> proj = projectToCamera( rotRi, refr, ri, z );
+			Img< FloatType> proj = projectToCamera( rotRi, refr, ri, z );
 			//RunJob.display( proj, "proj" );
-			//Tools.save( proj, dir + "proj_" + tag + ".tif" );
+			Tools.save( proj, dir + "proj_" + tag + ".tif" );
 		}
 
 		//ImageJFunctions.show( rot ).setDisplayRange( 0, 1 );
