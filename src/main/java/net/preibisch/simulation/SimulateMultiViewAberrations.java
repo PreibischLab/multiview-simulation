@@ -113,7 +113,7 @@ public class SimulateMultiViewAberrations
 		final double[] rayPosition = new double[ 3 ];
 
 		final double nA = 1.00; // air (intensity == 0)
-		final double nB = ri;//1.01; // water (intensity == 1)
+		final double nB = /*ri;*/1.01; // water (intensity == 1)
 
 		final Cursor< FloatType > c = proj.localizingCursor();
 		
@@ -128,7 +128,7 @@ public class SimulateMultiViewAberrations
 
 			double avgValue = 0;
 
-			for ( int i = 0; i < 30; ++i )
+			for ( int i = 0; i < 300; ++i )
 			{
 				rayPosition[ 0 ] = c.getIntPosition( 0 ) + (rnd.nextDouble() - 0.5);
 				rayPosition[ 1 ] = c.getIntPosition( 1 ) + (rnd.nextDouble() - 0.5);
@@ -461,127 +461,119 @@ public class SimulateMultiViewAberrations
 		return img;
 	}
 
-    public static < T extends RealType< T > > void multiSpheres(
-            final RandomAccessibleInterval< T > image,
-            final RandomAccessibleInterval< T > ri,
-            final int scale,
-            final Random rnd )
-    {
-            // the number of dimensions
-            int numDimensions = image.numDimensions();
+	public static < T extends RealType< T > > void multiSpheres(
+			final RandomAccessibleInterval< T > image,
+			final RandomAccessibleInterval< T > ri,
+			final int scale,
+			final Random rnd )
+	{
+			// the number of dimensions
+			final int numDimensions = image.numDimensions();
 
-            // define the center and radius
-            Point center1 = new Point( image.numDimensions() );
-            Point center2 = new Point( image.numDimensions() );
-            Point center3 = new Point( image.numDimensions() );
+			// define the center and radius
+			final Point center1 = new Point( image.numDimensions() );
+			final Point center2 = new Point( image.numDimensions() );
+			final Point center3 = new Point( image.numDimensions() );
 
-            long minSize = image.dimension( 0 );
+			long minSize = image.dimension( 0 );
 
-            for ( int d = 0; d < numDimensions; ++d )
-            {
-                    long size = image.dimension( d );
+			for ( int d = 0; d < numDimensions; ++d )
+			{
+				long size = image.dimension( d );
 
-                    center1.setPosition( size / 2 , d );
-                    center2.setPosition( size / 2 , d );
-                    center3.setPosition( size / 2 , d );
-                    minSize = Math.min( minSize, size );
-            }
+				center1.setPosition( size / 2 , d );
+				center2.setPosition( size / 2 , d );
+				center3.setPosition( size / 2 , d );
+				minSize = Math.min( minSize, size );
+			}
 
-            // define the maximal radius of the small spheres
-            int maxRadius = 10 * scale;
+			// define the maximal radius of the small spheres
+			int maxRadius = 10 * scale;
 
-            // compute the radius of the large sphere so that we do not draw
-            // outside of the defined interval
-            long radiusLargeSphere1 = minSize / 2 - 47*scale - 1 /*new*/;// -45;
+			// compute the radius of the large sphere so that we do not draw
+			// outside of the defined interval
+			long radiusLargeSphere1 = minSize / 2 - 47*scale - 1 /*new*/;// -45;
 
-            //center1.move( -2*radiusLargeSphere1 / 3, 1 );
-            //center3.move( 2*radiusLargeSphere1 / 3, 1 );
+			final ArrayList< Pair< Pair< Point, Long >, double[] > > centers = new ArrayList<>();
 
-            final ArrayList< Pair< Pair< Point, Long >, double[] > > centers = new ArrayList<>();
-            //centers.add( new ValuePair<>( new ValuePair<>( center1, radiusLargeSphere1 + maxRadius + 8 ), new double[] { 0.0, 0.0, 5, 5 } ) );
-            //centers.add( new ValuePair<>( new ValuePair<>( center3, radiusLargeSphere1 + maxRadius + 8), new double[] { 0.0, 0.0, 4, 4 } ) );
-            //centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.0, 1.0, 4.0, 5.0 } ) );
+			// defines a small sphere (location, radius), [minValueIm, maxValueIm, minValueRi, maxValueRi]
+			centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.5, 1.0, 1.0, 1.1 } ) );
 
-            centers.add( new ValuePair<>( new ValuePair<>( center2, radiusLargeSphere1 ), new double[] { 0.5, 1.0, 1.0, 1.1 } ) );
+			for ( final Pair< Pair< Point, Long >, double[] > center : centers )
+			{
+				final double minValueIm = center.getB()[ 0 ];
+				final double maxValueIm = center.getB()[ 1 ];
 
-            double minValueRi, maxValueRi;
-            double minValueIm, maxValueIm;
+				final double minValueRi = center.getB()[ 2 ];
+				final double maxValueRi = center.getB()[ 3 ];
 
-            for ( final Pair< Pair< Point, Long >, double[] > center : centers )
-            {
-        		minValueIm = center.getB()[ 0 ];
-        		maxValueIm = center.getB()[ 1 ];
+				// define a hypersphere (n-dimensional sphere)
+				final HyperSphere< T > hyperSphereIm = new HyperSphere<T>( image, center.getA().getA(), center.getA().getB() );
+				final HyperSphere< T > hyperSphereRi = new HyperSphere<T>( ri, center.getA().getA(), center.getA().getB() );
 
-        		minValueRi = center.getB()[ 2 ];
-        		maxValueRi = center.getB()[ 3 ];
+				// create a cursor on the hypersphere
+				final HyperSphereCursor< T > cursorIm = hyperSphereIm.cursor();
+				final HyperSphereCursor< T > cursorRi = hyperSphereRi.cursor();
+				
+				final int size = (int)hyperSphereIm.size();
+				
+				IJ.showProgress( 0.0 );
+				
+				int i = 0;
+				
+				while ( cursorIm.hasNext() )
+				{
+					cursorIm.fwd();
+					cursorRi.fwd();
 
-            	System.out.println( minValueRi + " " + maxValueRi );
+					if ( maxValueIm == minValueIm )
+							cursorIm.get().setReal( minValueIm );
 
-	            // define a hypersphere (n-dimensional sphere)
-                HyperSphere< T > hyperSphereIm = new HyperSphere<T>( image, center.getA().getA(), center.getA().getB() );
-                HyperSphere< T > hyperSphereRi = new HyperSphere<T>( ri, center.getA().getA(), center.getA().getB() );
-	
-	            // create a cursor on the hypersphere
-	            HyperSphereCursor< T > cursorIm = hyperSphereIm.cursor();
-	            HyperSphereCursor< T > cursorRi = hyperSphereRi.cursor();
-	
-	            int size = (int)hyperSphereIm.size();
-	
-	            IJ.showProgress( 0.0 );
-	
-	            int i = 0;
-	
-	            while ( cursorIm.hasNext() )
-	            {
-	                    cursorIm.fwd();
-	                    cursorRi.fwd();
-	
-	                    if ( maxValueIm == minValueIm )
-	                    		cursorIm.get().setReal( minValueIm );
+					if ( maxValueRi == minValueRi )
+							cursorRi.get().setReal( minValueRi );
 
-	                    if ( maxValueRi == minValueRi )
-	                    		cursorRi.get().setReal( minValueRi );
+					// the random radius of the current small hypersphere
+					int radius = Math.max( rnd.nextInt( maxRadius ) + 1, maxRadius - 1 );
 
-	                    // the random radius of the current small hypersphere
-	                    int radius = Math.max( rnd.nextInt( maxRadius ) + 1, maxRadius - 1 );
-	
-	                    // instantiate a small hypersphere at the location of the current pixel
-	                    // in the large hypersphere
-	                    final HyperSphere< T > smallSphereIm = new HyperSphere< T >( image, cursorIm, radius );
-	                    final HyperSphere< T > smallSphereRi = new HyperSphere< T >( ri, cursorRi, radius );
-	
-	                    // define the random intensity for this small sphere
-	                    double randomValue = rnd.nextDouble();
-	
-	                    // take only every 4^dimension'th pixel by chance so that it is not too crowded
-	                    if ( ( randomValue * 50000 ) < 2 )
-	                    {
-	                            // scale to right range
-	                            randomValue = rnd.nextDouble();
-	                            
-	                            double randomValueRi = randomValue * ( maxValueRi - minValueRi ) + minValueRi;
-	                            double randomValueIm = randomValue * ( maxValueIm - minValueIm ) + minValueIm;
-	
-	                            // set the value to all pixels in the small sphere if the intensity is
-	                            // brighter than the existing one
-	                            if ( maxValueIm != minValueIm )
-	                            		for ( final T value : smallSphereIm )
-	                                    value.setReal( Math.max( randomValueIm, value.getRealDouble() ) );
+					// instantiate a small hypersphere at the location of the current pixel
+					// in the large hypersphere
+					final HyperSphere< T > smallSphereIm = new HyperSphere< T >( image, cursorIm, radius );
+					final HyperSphere< T > smallSphereRi = new HyperSphere< T >( ri, cursorRi, radius );
+					
+					// define the random intensity for this small sphere
+					double randomValue = rnd.nextDouble();
+					
+					// take only every 4^dimension'th pixel by chance so that it is not too crowded
+					if ( ( randomValue * 50000 ) < 2 )
+					{
+						// scale to right range
+						randomValue = rnd.nextDouble();
+						
+						double randomValueRi = randomValue * ( maxValueRi - minValueRi ) + minValueRi;
+						double randomValueIm = randomValue * ( maxValueIm - minValueIm ) + minValueIm;
+						
+						// set the value to all pixels in the small sphere if the intensity is
+						// brighter than the existing one
+						if ( maxValueIm != minValueIm )
+							for ( final T value : smallSphereIm )
+								value.setReal( Math.max( randomValueIm, value.getRealDouble() ) );
+						
+						if ( maxValueRi != minValueRi )
+						{
+							for ( final T value : smallSphereRi )
+							{
+								if ( value.getRealDouble() == 5.0 )
+									value.setReal( randomValueRi );
+								else
+									value.setReal( Math.max( randomValueRi, value.getRealDouble() ) );
+							}
+						}
+					}
 
-	                            if ( maxValueRi != minValueRi )
-	                            		for ( final T value : smallSphereRi )
-	                            		{
-	                            			if ( value.getRealDouble() == 5.0 )
-	                            				value.setReal( randomValueRi );
-	                            			else
-	                            				value.setReal( Math.max( randomValueRi, value.getRealDouble() ) );
-	                            		}
-	                    }
-
-	                    IJ.showProgress( ++i, size );
-	            }
-            }
-    }
+					IJ.showProgress( ++i, size );
+				}
+			}
+	}
 
 	public static void simulate( final boolean illum, final double lsMiddle, final double lsEdge, final double ri, final String dir, final ExecutorService service, final int z )
 	{
