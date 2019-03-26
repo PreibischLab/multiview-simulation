@@ -132,7 +132,7 @@ public class SimulateMultiViewAberrations
 
 			double avgValue = 0;
 
-			for ( int i = 0; i < 300; ++i )
+			for ( int i = 0; i < 500; ++i )
 			{
 				rayPosition[ 0 ] = c.getIntPosition( 0 ) + (rnd.nextDouble() - 0.5);
 				rayPosition[ 1 ] = c.getIntPosition( 1 ) + (rnd.nextDouble() - 0.5);
