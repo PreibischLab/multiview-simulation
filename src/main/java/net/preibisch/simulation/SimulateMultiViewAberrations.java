@@ -44,6 +44,7 @@ import net.imglib2.img.Img;
 import net.imglib2.img.array.ArrayImgFactory;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
+import net.imglib2.multithreading.SimpleMultiThreading;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
 import net.imglib2.util.Pair;
@@ -113,10 +114,13 @@ public class SimulateMultiViewAberrations
 		final double[] rayPosition = new double[ 3 ];
 
 		final double nA = 1.00; // air (intensity == 0)
-		final double nB = ri;//1.01; // water (intensity == 1)
+		final double nB = 1.01; //ri // water (intensity == 1)
 
 		final Cursor< FloatType > c = proj.localizingCursor();
-		
+
+		final double sigma = 4.0;
+		final double two_sq_sigma = 2 * sigma * sigma;
+
 		while ( c.hasNext() )
 		{
 			c.fwd();
@@ -217,7 +221,8 @@ public class SimulateMultiViewAberrations
 					 * 0.5 > 1.5
 					 * 1 > 2
 					 */
-					signal += ( rrRef.get().get() / Math.pow( zOffset + 1.0, 1.00 / 1.75 ));
+					//signal += ( rrRef.get().get() / Math.pow( zOffset + 1.0, 1.00 / 1.75 ));
+					signal += rrRef.get().get() * getGaussValue( zOffset, two_sq_sigma );
 	
 					rayPosition[ 0 ] += rayVector[ 0 ];
 					rayPosition[ 1 ] += rayVector[ 1 ];
@@ -246,6 +251,11 @@ public class SimulateMultiViewAberrations
 		}
 
 		return proj;
+	}
+
+	private static final double getGaussValue( final double distance, final double two_sq_sigma )
+	{
+		return Math.exp( -(distance * distance) / two_sq_sigma );
 	}
 
 	public static VolumeInjection refract3d(
@@ -544,7 +554,7 @@ public class SimulateMultiViewAberrations
 					double randomValue = rnd.nextDouble();
 					
 					// take only every 4^dimension'th pixel by chance so that it is not too crowded
-					if ( ( randomValue * 50000 ) < 2 )
+					if ( ( randomValue * 100000 ) < 1 )
 					{
 						// scale to right range
 						randomValue = rnd.nextDouble();
@@ -659,6 +669,14 @@ public class SimulateMultiViewAberrations
 
 	public static void main( String[] args )
 	{
+		final double sigma = 4;
+		final double two_sq_sigma = 2 * sigma * sigma;
+
+		for ( double d = 0; d < 20; d += 1 )
+			System.out.println( d + ": " + getGaussValue( d, two_sq_sigma ) );
+
+		//System.exit( 0 );
+
 		final double[] i = new double[] { 0, -1, 0 };
 		final double[] n = new double[] { 0.7071067811865475,-0.7071067811865475,-0.0 }; // 45
 		//final double[] n = new double[] { 0.642824346533225,-0.766013615743305,-0.0 }; // 40.00274776305653
