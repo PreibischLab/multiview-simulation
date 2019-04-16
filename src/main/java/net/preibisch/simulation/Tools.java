@@ -22,14 +22,20 @@
  */
 package net.preibisch.simulation;
 
+import java.awt.Image;
+import java.io.File;
+import java.io.IOException;
+import java.util.Random;
+
+import ij.IJ;
 import ij.ImagePlus;
 import ij.io.FileSaver;
 import ij.io.Opener;
 import ij.process.ImageProcessor;
-
-import java.awt.Image;
-import java.util.Random;
-
+import loci.formats.ChannelSeparator;
+import loci.formats.FormatException;
+import loci.formats.FormatTools;
+import loci.formats.IFormatReader;
 import mpicbg.util.RealSum;
 import net.imglib2.Cursor;
 import net.imglib2.IterableInterval;
@@ -79,7 +85,7 @@ public class Tools
 		}
 	}
 
-    public static void save( final Img< FloatType > img, final String file )
+    public static void save( final RandomAccessibleInterval< FloatType > img, final String file )
     {
     	final ImagePlus imp = ImageJFunctions.wrap( img, "" ).duplicate();
 
@@ -152,8 +158,91 @@ public class Tools
 		return correction;
 	}
 
+
 	public static Img< FloatType > open( final String name, final ImgFactory< FloatType > factory )
 	{
+		final IFormatReader r = new ChannelSeparator();
+
+		final String id = new File( name ).getAbsolutePath();
+
+		try
+		{
+			r.setId( id );
+			
+			final boolean isLittleEndian = r.isLittleEndian();
+			final int width = r.getSizeX();
+			final int height = r.getSizeY();
+			final int depth = r.getSizeZ();
+			int timepoints = r.getSizeT();
+			int channels = r.getSizeC();
+			final int tiles = r.getSeriesCount();
+			final int pixelType = r.getPixelType();
+			final int bytesPerPixel = FormatTools.getBytesPerPixel( pixelType );
+			final String pixelTypeString = FormatTools.getPixelTypeString( pixelType );
+
+			if ( pixelType != FormatTools.FLOAT )
+			{
+				System.out.println( "StackImgLoaderLOCI.openLOCI(): PixelType " + pixelTypeString + " not supported, returning. ");
+
+				r.close();
+
+				return null;
+			}
+
+			System.out.println( "w: " + width );
+			System.out.println( "h: " + height );
+			System.out.println( "d: " + depth );
+			System.out.println( "t: " + timepoints );
+			System.out.println( "c: " + channels );
+
+			final Img< FloatType > img = factory.create( new long[] { width, height, depth }, new FloatType() );
+
+			final byte[] b = new byte[width * height * bytesPerPixel];
+
+			final int planeX = 0;
+			final int planeY = 1;
+
+			for ( int z = 0; z < depth; ++z )
+			{
+				final Cursor< FloatType > cursor = Views.iterable( Views.hyperSlice( img, 2, z ) ).localizingCursor();
+
+				r.openBytes( r.getIndex( z, 0, 0 ), b );
+
+				while( cursor.hasNext() )
+				{
+					cursor.fwd();
+					cursor.get().setReal( getFloatValue( b, ( cursor.getIntPosition( planeX )+ cursor.getIntPosition( planeY )*width )*4, isLittleEndian ) );
+				}
+			}
+
+			r.close();
+
+			return img;
+
+		} catch ( FormatException | IOException e )
+		{
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}
+
+
+		return null;
+	}
+
+	public static final float getFloatValue( final byte[] b, final int i, final boolean isLittleEndian )
+	{
+		if ( isLittleEndian )
+			return Float.intBitsToFloat( ((b[i+3] & 0xff) << 24)  + ((b[i+2] & 0xff) << 16)  +  ((b[i+1] & 0xff) << 8)  + (b[i] & 0xff) );
+		else
+			return Float.intBitsToFloat( ((b[i] & 0xff) << 24)  + ((b[i+1] & 0xff) << 16)  +  ((b[i+2] & 0xff) << 8)  + (b[i+3] & 0xff) );
+	}
+
+
+	public static Img< FloatType > openIJ( final String name, final ImgFactory< FloatType > factory )
+	{
+		if ( !new File( name ).exists() )
+			throw new RuntimeException( "file '" + name + "' does not exisit." );
+
 		final Opener io = new Opener();
 		ImagePlus imp = io.openImage( name );
 		

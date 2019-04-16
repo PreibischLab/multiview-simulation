@@ -130,5 +130,52 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 			<groupId>sc.fiji</groupId>
 			<artifactId>spim_data</artifactId>
 		</dependency>
+
+		<!-- OME dependencies -->
+		<dependency>
+			<groupId>ome</groupId>
+			<artifactId>formats-api</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>ome</groupId>
+			<artifactId>formats-bsd</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>ome</groupId>
+			<artifactId>formats-gpl</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>ch.systems.cisd</groupId>
+					<artifactId>jhdf5</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>org.openmicroscopy</groupId>
+			<artifactId>ome-xml</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.openmicroscopy</groupId>
+			<artifactId>ome-common</artifactId>
+		</dependency>
 	</dependencies>
+
+<build>
+  <plugins>
+    <plugin>
+      <artifactId>maven-assembly-plugin</artifactId>
+      <configuration>
+        <archive>
+          <manifest>
+            <mainClass>net.preibisch.simulation.cluster.RunJob</mainClass>
+          </manifest>
+        </archive>
+        <descriptorRefs>
+          <descriptorRef>jar-with-dependencies</descriptorRef>
+        </descriptorRefs>
+      </configuration>
+    </plugin>
+  </plugins>
+</build>
+
 </project>
