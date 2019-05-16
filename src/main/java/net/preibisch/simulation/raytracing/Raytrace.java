@@ -71,7 +71,7 @@ public class Raytrace
 	}
 
 
-	public static void drawSimpleImage( final RandomAccessibleInterval< FloatType > randomAccessible )
+	public static void drawSimpleImage( final RandomAccessibleInterval< FloatType > randomAccessible, final float low, final float high )
 	{
 		final Cursor< FloatType > c = Views.iterable( randomAccessible ).localizingCursor();
 
@@ -99,9 +99,9 @@ public class Raytrace
 			}
 
 			if ( all )
-				c.get().set( 1 );
+				c.get().set( high );
 			else
-				c.get().set( 0 );
+				c.get().set( low );
 		}
 	}
 
