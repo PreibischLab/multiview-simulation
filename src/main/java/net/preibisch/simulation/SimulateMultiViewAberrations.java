@@ -77,7 +77,7 @@ public class SimulateMultiViewAberrations
 {
 	final static Random rnd = new Random( 464232194 );
 
-	private static final boolean inside( final double[] rayPosition, final Interval interval )
+	public static final boolean inside( final double[] rayPosition, final Interval interval )
 	{
 		for ( int d = 0; d < rayPosition.length; ++d )
 			if ( rayPosition[ d ] < interval.min( d ) || rayPosition[ d ] > interval.max( d ) )
