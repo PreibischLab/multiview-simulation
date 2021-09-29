@@ -1,4 +1,4 @@
-[![](https://travis-ci.org/PreibischLab/multiview-simulation.svg?branch=master)](https://travis-ci.org/PreibischLab/multiview-simulation)
+[![](https://github.com/PreibischLab/multiview-simulation/actions/workflows/build-main.yml/badge.svg)](https://github.com/PreibischLab/multiview-simulation/actions/workflows/build-main.yml)
 
 multiview-simulation
 ====================

@@ -84,8 +84,8 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 		<url>https://github.com/PreibischLab/multiview-simulation/issues</url>
 	</issueManagement>
 	<ciManagement>
-		<system>Travis CI</system>
-		<url>https://travis-ci.org/PreibischLab/multiview-simulation</url>
+		<system>GitHub Actions</system>
+		<url>https://github.com/PreibischLab/multiview-simulation/actions</url>
 	</ciManagement>
 
 	<properties>
@@ -95,7 +95,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 		<license.copyrightOwners>Multiview Simulation developers.</license.copyrightOwners>
 
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
-		<releaseProfiles>deploy-to-scijava</releaseProfiles>
+		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
 	</properties>
 
 	<repositories>
