@@ -34,7 +34,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 		<developer>
 			<id>StephanPreibisch</id>
 			<name>Stephan Preibisch</name>
-			<url>https://imagej.net/User:StephanP</url>
+			<url>https://imagej.net/people/StephanPreibisch</url>
 			<roles>
 				<role>founder</role>
 				<role>lead</role>
@@ -48,7 +48,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 		<developer>
 			<id>hoerldavid</id>
 			<name>David Hoerl</name>
-			<url>https://imagej.net/User:Davidhoerl</url>
+			<url>https://imagej.net/people/hoerldavid</url>
 			<roles>
 				<role>developer</role>
 				<role>debugger</role>
@@ -61,7 +61,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 	<contributors>
 		<contributor>
 			<name>Curtis Rueden</name>
-			<url>https://imagej.net/User:Rueden</url>
+			<url>https://imagej.net/people/ctrueden</url>
 			<properties><id>ctrueden</id></properties>
 		</contributor>
 	</contributors>
@@ -69,7 +69,7 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 	<mailingLists>
 		<mailingList>
 			<name>Image.sc Forum</name>
-			<archive>https://forum.image.sc/tags/multiview-simulation</archive>
+			<archive>https://forum.image.sc/tag/multiview-simulation</archive>
 		</mailingList>
 	</mailingLists>
 
