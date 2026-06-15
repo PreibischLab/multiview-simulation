@@ -5,6 +5,13 @@
 /target
 /.settings
 
+*.tif
+r2/
+r3/
+r300-block4/
+r500-block4-gauss-1.01/
+render/
+
 # Package Files #
 *.jar
 *.war
