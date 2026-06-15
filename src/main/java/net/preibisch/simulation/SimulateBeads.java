@@ -3,7 +3,7 @@
  * Library for simulating a multi-view acquisition including
  * attenuation, convolution, reduced sampling and poission noise.
  * %%
- * Copyright (C) 2014 - 2017 Multiview Simulation developers.
+ * Copyright (C) 2014 - 2026 Multiview Simulation developers.
  * %%
  * This program is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as
