@@ -17,7 +17,6 @@ import net.imglib2.RealLocalizable;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.Sampler;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.interpolation.randomaccess.NLinearInterpolatorFactory;
 import net.imglib2.neighborsearch.RadiusNeighborSearchOnKDTree;
@@ -93,6 +92,12 @@ public class HypersphereCollectionRealRandomAccessible< T extends Type< T > > im
 	}
 
 	@Override
+	public T getType()
+	{
+		return type;
+	}
+
+	@Override
 	public RealRandomAccess< T > realRandomAccess()
 	{
 		prepareKDTree();
@@ -150,7 +155,13 @@ public class HypersphereCollectionRealRandomAccessible< T extends Type< T > > im
 		}
 
 		@Override
-		public Sampler< T > copy()
+		public T getType()
+		{
+			return type;
+		}
+
+		@Override
+		public RealRandomAccess< T > copy()
 		{
 			return copyRealRandomAccess();
 		}

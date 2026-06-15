@@ -13,7 +13,6 @@ import net.imglib2.RealInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.Sampler;
 import net.imglib2.img.display.imagej.ImageJFunctions;
 import net.imglib2.type.numeric.RealType;
 import net.imglib2.type.numeric.real.FloatType;
@@ -55,6 +54,12 @@ public class PerlinNoiseRealRandomAccessible<T extends RealType< T >> implements
 	public int numDimensions()
 	{
 		return numDim;
+	}
+
+	@Override
+	public T getType()
+	{
+		return type;
 	}
 
 	@Override
@@ -133,7 +138,13 @@ public class PerlinNoiseRealRandomAccessible<T extends RealType< T >> implements
 		}
 
 		@Override
-		public Sampler< T > copy()
+		public T getType()
+		{
+			return type;
+		}
+
+		@Override
+		public RealRandomAccess< T > copy()
 		{
 			return copyRealRandomAccess();
 		}

@@ -9,7 +9,6 @@ import net.imglib2.RealInterval;
 import net.imglib2.RealPoint;
 import net.imglib2.RealRandomAccess;
 import net.imglib2.RealRandomAccessible;
-import net.imglib2.Sampler;
 import net.imglib2.type.Type;
 
 public class SimpleCalculatedRealRandomAccessible<T extends Type< T >> implements RealRandomAccessible< T >
@@ -40,6 +39,12 @@ public class SimpleCalculatedRealRandomAccessible<T extends Type< T >> implement
 	public int numDimensions()
 	{
 		return numDimensions;
+	}
+
+	@Override
+	public T getType()
+	{
+		return type;
 	}
 
 	@Override
@@ -87,7 +92,13 @@ public class SimpleCalculatedRealRandomAccessible<T extends Type< T >> implement
 		}
 
 		@Override
-		public Sampler< T > copy()
+		public T getType()
+		{
+			return type;
+		}
+
+		@Override
+		public RealRandomAccess< T > copy()
 		{
 			return copyRealRandomAccess();
 		}

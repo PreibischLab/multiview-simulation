@@ -5,13 +5,13 @@
 	<parent>
 		<groupId>org.scijava</groupId>
 		<artifactId>pom-scijava</artifactId>
-		<version>31.1.0</version>
+		<version>44.0.0</version>
 		<relativePath />
 	</parent>
 
 	<groupId>net.preibisch</groupId>
 	<artifactId>multiview-simulation</artifactId>
-	<version>0.2.3-SNAPSHOT</version>
+	<version>0.3.0-SNAPSHOT</version>
 
 	<name>Multiview Simulation</name>
 	<description>Library for simulating a multi-view acquisition including
@@ -96,6 +96,12 @@ attenuation, convolution, reduced sampling and poission noise.</description>
 
 		<!-- NB: Deploy releases to the SciJava Maven repository. -->
 		<releaseProfiles>sign,deploy-to-scijava</releaseProfiles>
+
+		<!-- TEMP: match multiview-reconstruction zarrv3 stack until pom-scijava 44.0.0 is updated for ZARRv3. -->
+		<mpicbg.version>1.6.6</mpicbg.version>
+		<imglib2-algorithm.version>0.18.3</imglib2-algorithm.version>
+		<imglib2-realtransform.version>4.0.5</imglib2-realtransform.version>
+		<imglib2-cache.version>1.0.0-beta-20</imglib2-cache.version>
 	</properties>
 
 	<repositories>
